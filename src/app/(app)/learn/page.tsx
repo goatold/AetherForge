@@ -75,7 +75,10 @@ export default async function LearnPage() {
           <ul>
             {artifacts.map((artifact) => (
               <li key={artifact.id}>
-                v{artifact.artifact_version} - {artifact.provider}/{artifact.model} at{" "}
+                <Link href={`/learn/artifacts/${artifact.id}`}>
+                  v{artifact.artifact_version}
+                </Link>{" "}
+                - {artifact.provider}/{artifact.model} at{" "}
                 {new Date(artifact.created_at).toLocaleString()}
               </li>
             ))}

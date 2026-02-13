@@ -66,6 +66,21 @@ export const conceptQueries = {
       values: [workspaceId, title, summary]
     };
   },
+  insertForArtifact(
+    workspaceId: string,
+    artifactId: string,
+    title: string,
+    summary: string
+  ): SqlQuery {
+    return {
+      text: `
+        insert into concepts (workspace_id, artifact_id, title, summary)
+        values ($1, $2, $3, $4)
+        returning id, workspace_id, artifact_id, title, summary, created_at
+      `,
+      values: [workspaceId, artifactId, title, summary]
+    };
+  },
   listByWorkspace(workspaceId: string): SqlQuery {
     return {
       text: `
@@ -75,6 +90,18 @@ export const conceptQueries = {
         order by created_at desc
       `,
       values: [workspaceId]
+    };
+  },
+  listByArtifactForUser(artifactId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select c.id, c.workspace_id, c.artifact_id, c.title, c.summary, c.created_at
+        from concepts c
+        join workspace_members m on m.workspace_id = c.workspace_id
+        where c.artifact_id = $1 and m.user_id = $2
+        order by c.created_at asc
+      `,
+      values: [artifactId, userId]
     };
   },
   findByIdForUser(conceptId: string, userId: string): SqlQuery {
@@ -285,6 +312,18 @@ export const conceptArtifactQueries = {
         order by created_at desc
       `,
       values: [workspaceId]
+    };
+  },
+  findByIdForUser(artifactId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select a.id, a.workspace_id, a.topic, a.difficulty, a.artifact_version, a.provider, a.model, a.created_by_user_id, a.created_at
+        from concept_generation_artifacts a
+        join workspace_members m on m.workspace_id = a.workspace_id
+        where a.id = $1 and m.user_id = $2
+        limit 1
+      `,
+      values: [artifactId, userId]
     };
   }
 };
