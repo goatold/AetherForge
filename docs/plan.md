@@ -105,6 +105,12 @@ flowchart LR
 
 ## Phase Plan (Execution Roadmap)
 
+### Status Snapshot (Updated)
+
+- Phase 0: complete.
+- Phase 1: complete (auth/session guardrails, DB schema+migrations+seed pipeline, and DB-backed workspace access by signed-in user).
+- Phase 2: in progress (initial concept generation endpoint, artifact persistence, and explorer/detail UI scaffolding).
+
 ### Phase 0 (Week 1) - Foundation Hardening
 
 **Deliverables**

@@ -56,10 +56,10 @@ const fromToken = (token: string): SessionPayload | null => {
 
 const createUserId = () => `user_${randomUUID()}`;
 
-export const createSessionToken = (email: string) => {
+export const createSessionToken = (userId: string, email: string) => {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
-    userId: createUserId(),
+    userId: userId || createUserId(),
     email,
     issuedAt: now,
     expiresAt: now + SESSION_TTL_SECONDS
@@ -76,9 +76,9 @@ export const getSessionCookieOptions = () => ({
   maxAge: SESSION_TTL_SECONDS
 });
 
-export async function createSession(email: string) {
+export async function createSession(userId: string, email: string) {
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, createSessionToken(email), {
+  cookieStore.set(SESSION_COOKIE_NAME, createSessionToken(userId, email), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
