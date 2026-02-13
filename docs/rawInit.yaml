@@ -1,0 +1,16 @@
+Create a project to develope an app that helps the user learn knowledge and skills of a choosen subjet or topic.
+Expected function:
+- User can choose a topic to learn
+- User can choose a level of difficulty
+- the app can present key concepts and principles of the topic in a structured way
+  - the presentation should be interactive, with the user able to click on a concept to get more information
+- the app can provide examples and case studies to help the user understand the material
+  - the examples and case studies can be interactive, with the user able to click on an example to get more information
+- the app can generate quizzes to help the user check their knowledge and skills, including questions that help user apply the knowledge and skills to real-world situations
+- the app can evaluate the user's performance and provide feedback and guidance to help the user improve
+- the app can generate spaced repetition flashcards to help the user memorize the material
+- the app can assist the user to make learning objectives and learning plan, and track their progress
+- the app can assist the user to input and retrieve information from various sources, including books, articles, videos, and websites
+- the app can assist the user to create and manage their own learning resources, including notes, highlights, and summaries
+- the app can utilize AI agents to generate learning contents, including quizzes, flashcards, learning plans and feedback, guidance, and recommendations
+- the app can organize and store the learning contents and user's data in the cloud, so that the user can access their learning materials and data from anywhere and anytime
