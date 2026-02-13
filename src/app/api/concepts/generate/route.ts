@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { readSession } from "@/lib/auth/session";
+import { generateConceptPayload } from "@/lib/ai/generate-concepts";
 import {
-  generateBootstrapConceptPayload,
   parseGenerationRequest,
   validateGenerationPayload
 } from "@/lib/ai/concepts";
@@ -45,9 +45,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
 
-  const payload = validateGenerationPayload(
-    generateBootstrapConceptPayload(parsedRequest.topic, parsedRequest.difficulty)
+  const generatedPayload = await generateConceptPayload(
+    parsedRequest.topic,
+    parsedRequest.difficulty
   );
+  const payload = validateGenerationPayload(generatedPayload);
   if (!payload) {
     return NextResponse.json({ error: "Generated payload failed validation" }, { status: 500 });
   }

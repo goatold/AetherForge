@@ -109,7 +109,7 @@ flowchart LR
 
 - Phase 0: complete.
 - Phase 1: complete (auth/session guardrails, DB schema+migrations+seed pipeline, and DB-backed workspace access by signed-in user).
-- Phase 2: in progress (strict generation input/output validation scaffold, artifact lineage persistence, and explorer/detail + artifact reload flows).
+- Phase 2: in progress (provider-backed concept generation path with strict validation, artifact lineage persistence, and explorer/detail + artifact graph/reload flows).
 
 ### Phase 0 (Week 1) - Foundation Hardening
 

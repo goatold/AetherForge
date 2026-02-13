@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ConceptGraph } from "@/components/concept-graph";
 import { readSession } from "@/lib/auth/session";
 import { conceptArtifactQueries, conceptQueries, executeQuery } from "@/lib/db";
 
@@ -15,6 +16,11 @@ export default async function ArtifactDetailPage({ params }: ArtifactDetailPageP
   }
 
   const { artifactId } = await params;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(artifactId)) {
+    notFound();
+  }
 
   const artifactResult = await executeQuery<{
     id: string;
@@ -44,31 +50,40 @@ export default async function ArtifactDetailPage({ params }: ArtifactDetailPageP
   }>;
 
   return (
-    <section className="panel">
-      <p>
-        <Link href="/learn">Back to explorer</Link>
-      </p>
-      <h2>Artifact v{artifact.artifact_version}</h2>
-      <p>
-        Topic: {artifact.topic} ({artifact.difficulty})
-      </p>
-      <p>
-        Source: {artifact.provider}/{artifact.model}
-      </p>
+    <div className="space-y-4">
+      <section className="panel">
+        <p>
+          <Link href="/learn">Back to explorer</Link>
+        </p>
+        <h2>Artifact v{artifact.artifact_version}</h2>
+        <p>
+          Topic: {artifact.topic} ({artifact.difficulty})
+        </p>
+        <p>
+          Source: {artifact.provider}/{artifact.model}
+        </p>
+      </section>
 
-      <h3>Generated concepts</h3>
-      {concepts.length === 0 ? (
-        <p>No concepts linked to this artifact.</p>
-      ) : (
-        <ul>
-          {concepts.map((concept) => (
-            <li key={concept.id}>
-              <Link href={`/learn/${concept.id}`}>{concept.title}</Link>
-              <p>{concept.summary}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+      <ConceptGraph
+        artifactLabel={`v${artifact.artifact_version} - ${artifact.topic}`}
+        nodes={concepts.map((concept) => ({ id: concept.id, title: concept.title }))}
+      />
+
+      <section className="panel">
+        <h3>Generated concepts</h3>
+        {concepts.length === 0 ? (
+          <p>No concepts linked to this artifact.</p>
+        ) : (
+          <ul>
+            {concepts.map((concept) => (
+              <li key={concept.id}>
+                <Link href={`/learn/${concept.id}`}>{concept.title}</Link>
+                <p>{concept.summary}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }

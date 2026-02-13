@@ -11,7 +11,7 @@
 - Tester: Cursor agent (curl-based session walkthrough)
 - Branch / commit: local working tree (pre-commit)
 - Environment (local/staging): local
-- App URL: `http://localhost:3000`
+- App URL: `http://localhost:3002`
 - Database snapshot/seed used: local DB with phase migrations applied
 - Browser(s): N/A (HTTP session simulation with cookie jars)
 
@@ -76,6 +76,8 @@
 | 5.3 | Artifact detail | Open `/learn/artifacts/[artifactId]` | Detail page loads only artifact-linked concepts | PASS | Generated concepts listed for selected artifact |
 | 5.4 | Concept detail | Open `/learn/[conceptId]` | Title, summary, examples/case studies displayed | PASS | Example and case study entries visible |
 | 5.5 | Artifact reload | Reload artifact detail route | Persisted artifact data reloads without regeneration | PASS | Artifact detail remains accessible via direct route |
+| 5.6 | Concept graph view | Open artifact detail and inspect graph panel | Graph renders concept nodes linked to concept detail routes | PASS | "Concept graph" heading and linked concept nodes present |
+| 5.7 | Artifact provenance | Inspect artifact metadata and API payload | Provider/model provenance visible and persisted | PASS | UI shows `Source:` and API includes `provider`/`model` |
 
 ---
 
@@ -99,6 +101,7 @@
 | 7.2 | Invalid payload | Send malformed request to key API | Graceful 4xx response with useful error | PASS | Generate API validates request and rejects invalid body |
 | 7.3 | Unauthorized access | Call protected API signed out | 401/redirect behavior is correct | PASS | Protected API routes enforce session |
 | 7.4 | Empty states | Visit page with no generated data | Clear empty-state guidance is shown | PASS | Learn page shows empty-state copy before first generation |
+| 7.5 | Invalid artifact route param | Open `/learn/artifacts/not-a-uuid` in signed-in session | Request handled gracefully without DB UUID crash | PASS | HTTP 404 returned, no server exception surfaced |
 
 ---
 
@@ -122,8 +125,8 @@
 
 ## 10) Sign-Off Summary
 
-- Total checks: 36
-- Passed: 35
+- Total checks: 39
+- Passed: 38
 - Failed: 0
 - Blocked: 0
 - Not applicable: 1
