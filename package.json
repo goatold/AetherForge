@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "bash scripts/db/migrate.sh",
+    "db:seed": "bash scripts/db/seed.sh"
   },
   "dependencies": {
     "next": "^15.1.0",
+    "pg": "^8.18.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

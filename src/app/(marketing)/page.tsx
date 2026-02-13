@@ -10,8 +10,11 @@ export default function MarketingPage() {
           repetition flashcards, and personalized study plans.
         </p>
         <div className="row">
-          <Link className="button" href="/onboarding">
-            Enter app shell
+          <Link className="button" href="/sign-in">
+            Sign in
+          </Link>
+          <Link className="button subtle-button" href="/onboarding">
+            View protected app route
           </Link>
         </div>
       </section>
