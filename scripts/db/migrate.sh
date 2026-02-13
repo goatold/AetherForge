@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR/../.."
+
 if [[ -z "${DATABASE_URL:-}" ]]; then
-  echo "DATABASE_URL is required"
-  exit 1
+  if [[ -f "$REPO_ROOT/.env.local" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$REPO_ROOT/.env.local"
+    set +a
+  fi
+
+  if [[ -z "${DATABASE_URL:-}" ]]; then
+    echo "DATABASE_URL is required"
+    exit 1
+  fi
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MIGRATION_DIR="$SCRIPT_DIR/../../src/lib/db/migrations"
 
 for migration in "$MIGRATION_DIR"/*.sql; do
