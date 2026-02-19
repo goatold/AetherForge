@@ -110,7 +110,7 @@ flowchart LR
 - Phase 0: complete.
 - Phase 1: complete (auth/session guardrails, DB schema+migrations+seed pipeline, and DB-backed workspace access by signed-in user).
 - Phase 2: complete (provider-backed concept generation path with strict validation, artifact lineage persistence, and explorer/detail + artifact graph/reload flows).
-- Phase 3: in progress (quiz generation from concepts, attempt start/submit scoring flow, weak-area feedback, and attempt trend visibility with timeframe query support).
+- Phase 3: in progress (quiz generation from concepts, attempt start/submit scoring flow, concept-linked weak-area feedback, attempt trend visibility with timeframe query support, deep-linkable question-by-question review pages, and attempt comparison analytics across workspace and per-attempt views).
 
 ### Phase 0 (Week 1) - Foundation Hardening
 

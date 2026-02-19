@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { readSession } from "@/lib/auth/session";
 import {
+  conceptQueries,
   executeQuery,
   getDbPool,
   quizAttemptAnswerQueries,
@@ -188,10 +189,25 @@ export async function POST(request: Request, { params }: AttemptRouteProps) {
       .slice(0, 3)
       .map(([conceptId]) => conceptId);
 
-    const weakAreaQuestionPrompts = questionResult.rows
-      .filter((question) => weakConceptIds.includes(question.concept_id ?? ""))
-      .slice(0, 3)
-      .map((question) => question.prompt);
+    const weakAreaQuestions = questionResult.rows.filter((question) =>
+      weakConceptIds.includes(question.concept_id ?? "")
+    );
+    const weakConceptResult =
+      weakConceptIds.length > 0
+        ? await executeQuery<{ id: string; title: string }>(
+            conceptQueries.listByIdsForUser(weakConceptIds, session.userId)
+          )
+        : { rows: [] as Array<{ id: string; title: string }> };
+    const weakConceptTitleById = new Map(
+      weakConceptResult.rows.map((concept) => [concept.id, concept.title])
+    );
+    const weakAreas = weakAreaQuestions.slice(0, 3).map((question) => ({
+      conceptId: question.concept_id,
+      conceptTitle: question.concept_id
+        ? weakConceptTitleById.get(question.concept_id) ?? "Concept"
+        : "Concept",
+      prompt: question.prompt
+    }));
 
     return NextResponse.json({
       attempt: submitted,
@@ -200,7 +216,7 @@ export async function POST(request: Request, { params }: AttemptRouteProps) {
         scorePercent,
         correctCount,
         totalQuestions,
-        weakAreaPrompts: weakAreaQuestionPrompts,
+        weakAreas,
         nextActions: [
           "Review concept summaries linked to missed questions.",
           "Regenerate a quiz after reviewing weak areas.",

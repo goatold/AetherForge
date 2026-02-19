@@ -1,6 +1,8 @@
+type SqlPrimitive = string | number | boolean | Date | null;
+
 export interface SqlQuery {
   text: string;
-  values?: ReadonlyArray<string | number | boolean | Date | null>;
+  values?: ReadonlyArray<SqlPrimitive | ReadonlyArray<SqlPrimitive>>;
 }
 
 export interface UserRecord {

@@ -115,6 +115,17 @@ export const conceptQueries = {
       `,
       values: [conceptId, userId]
     };
+  },
+  listByIdsForUser(conceptIds: string[], userId: string): SqlQuery {
+    return {
+      text: `
+        select c.id, c.workspace_id, c.title, c.summary, c.created_at
+        from concepts c
+        join workspace_members m on m.workspace_id = c.workspace_id
+        where c.id = any($1::uuid[]) and m.user_id = $2
+      `,
+      values: [conceptIds, userId]
+    };
   }
 };
 
@@ -285,7 +296,7 @@ export const quizAttemptQueries = {
   findByIdForUser(attemptId: string, userId: string): SqlQuery {
     return {
       text: `
-        select a.id, a.quiz_id, a.user_id, a.status, a.score_percent, a.correct_count, a.total_questions, a.started_at, a.submitted_at, a.created_at
+        select a.id, a.quiz_id, q.title as quiz_title, a.user_id, a.status, a.score_percent, a.correct_count, a.total_questions, a.started_at, a.submitted_at, a.created_at
         from quiz_attempts a
         join quizzes q on q.id = a.quiz_id
         join workspace_members m on m.workspace_id = q.workspace_id
@@ -323,6 +334,53 @@ export const quizAttemptQueries = {
         limit $2
       `,
       values: [workspaceId, limit, sinceDays]
+    };
+  },
+  listRecentByWorkspaceForUserSince(
+    workspaceId: string,
+    userId: string,
+    limit: number,
+    sinceDays: number
+  ): SqlQuery {
+    return {
+      text: `
+        select a.id, a.quiz_id, q.title as quiz_title, a.user_id, a.status, a.score_percent, a.correct_count, a.total_questions, a.started_at, a.submitted_at, a.created_at
+        from quiz_attempts a
+        join quizzes q on q.id = a.quiz_id
+        where
+          q.workspace_id = $1
+          and a.user_id = $2
+          and a.status = 'submitted'
+          and a.submitted_at is not null
+          and a.submitted_at >= now() - ($4 * interval '1 day')
+        order by a.submitted_at desc
+        limit $3
+      `,
+      values: [workspaceId, userId, limit, sinceDays]
+    };
+  },
+  findPreviousSubmittedForQuizForUser(
+    quizId: string,
+    userId: string,
+    submittedAtIso: string
+  ): SqlQuery {
+    return {
+      text: `
+        select a.id, a.quiz_id, q.title as quiz_title, a.user_id, a.status, a.score_percent, a.correct_count, a.total_questions, a.started_at, a.submitted_at, a.created_at
+        from quiz_attempts a
+        join quizzes q on q.id = a.quiz_id
+        join workspace_members m on m.workspace_id = q.workspace_id
+        where
+          a.quiz_id = $1
+          and a.user_id = $2
+          and m.user_id = $2
+          and a.status = 'submitted'
+          and a.submitted_at is not null
+          and a.submitted_at < $3::timestamptz
+        order by a.submitted_at desc
+        limit 1
+      `,
+      values: [quizId, userId, submittedAtIso]
     };
   }
 };
@@ -364,6 +422,57 @@ export const quizAttemptAnswerQueries = {
         where quiz_attempt_id = $1
       `,
       values: [quizAttemptId]
+    };
+  },
+  listReviewByAttemptForUser(quizAttemptId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select
+          a.id,
+          a.quiz_attempt_id,
+          a.quiz_question_id,
+          a.selected_option_id,
+          a.answer_text,
+          a.is_correct,
+          q.prompt,
+          q.explanation,
+          q.correct_answer_text,
+          q.question_type,
+          q.position,
+          c.id as concept_id,
+          c.title as concept_title,
+          o.option_text as selected_option_text
+        from quiz_attempt_answers a
+        join quiz_attempts qa on qa.id = a.quiz_attempt_id
+        join quizzes z on z.id = qa.quiz_id
+        join workspace_members m on m.workspace_id = z.workspace_id
+        join quiz_questions q on q.id = a.quiz_question_id
+        left join concepts c on c.id = q.concept_id
+        left join quiz_question_options o on o.id = a.selected_option_id
+        where a.quiz_attempt_id = $1 and qa.user_id = $2 and m.user_id = $2
+        order by q.position asc
+      `,
+      values: [quizAttemptId, userId]
+    };
+  },
+  listScoredByAttemptForUser(quizAttemptId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select
+          a.quiz_question_id,
+          a.is_correct,
+          q.question_type,
+          c.id as concept_id,
+          c.title as concept_title
+        from quiz_attempt_answers a
+        join quiz_attempts qa on qa.id = a.quiz_attempt_id
+        join quizzes z on z.id = qa.quiz_id
+        join workspace_members m on m.workspace_id = z.workspace_id
+        join quiz_questions q on q.id = a.quiz_question_id
+        left join concepts c on c.id = q.concept_id
+        where a.quiz_attempt_id = $1 and qa.user_id = $2 and m.user_id = $2
+      `,
+      values: [quizAttemptId, userId]
     };
   }
 };

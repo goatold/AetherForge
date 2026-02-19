@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type QuestionType = "mcq" | "true_false" | "short_answer";
@@ -51,13 +52,58 @@ interface SubmissionFeedback {
   scorePercent: number;
   correctCount: number;
   totalQuestions: number;
-  weakAreaPrompts: string[];
+  weakAreas: Array<{
+    conceptId: string | null;
+    conceptTitle: string;
+    prompt: string;
+  }>;
   nextActions: string[];
 }
 
 interface AttemptResponseDraft {
   selectedOptionId?: string;
   answerText?: string;
+}
+
+interface AttemptReviewItem {
+  questionId: string;
+  position: number;
+  questionType: QuestionType;
+  prompt: string;
+  explanation: string;
+  correctAnswerText: string;
+  submittedAnswerText: string;
+  isCorrect: boolean;
+  concept: { id: string; title: string } | null;
+}
+
+interface AttemptComparison {
+  currentAttempt: {
+    id: string;
+    scorePercent: number | null;
+    submittedAt: string;
+  };
+  previousAttempt: {
+    id: string;
+    scorePercent: number | null;
+    submittedAt: string;
+  };
+  scoreDeltaPercent: number | null;
+  byQuestionType: Array<{
+    type: QuestionType;
+    currentAccuracyPercent: number | null;
+    previousAccuracyPercent: number | null;
+    deltaPercent: number | null;
+    currentTotal: number;
+    previousTotal: number;
+  }>;
+  weakConceptDeltas: Array<{
+    conceptId: string;
+    conceptTitle: string;
+    currentIncorrectCount: number;
+    previousIncorrectCount: number;
+    deltaIncorrectCount: number;
+  }>;
 }
 
 const trendLabel = (attempts: AttemptHistoryItem[]) => {
@@ -93,6 +139,9 @@ export function QuizWorkspace({
   const [timeframeDays, setTimeframeDays] = useState<7 | 14 | 30 | 90>(30);
   const [recentAttempts, setRecentAttempts] =
     useState<AttemptHistoryItem[]>(initialRecentAttempts);
+  const [selectedReviewAttemptId, setSelectedReviewAttemptId] = useState<string | null>(null);
+  const [selectedReview, setSelectedReview] = useState<AttemptReviewItem[] | null>(null);
+  const [comparison, setComparison] = useState<AttemptComparison | null>(null);
 
   const scoreAverage = useMemo(() => {
     const scored = recentAttempts
@@ -108,6 +157,8 @@ export function QuizWorkspace({
   const handleGenerateQuiz = () => {
     setErrorMessage(null);
     setFeedback(null);
+    setSelectedReview(null);
+    setSelectedReviewAttemptId(null);
 
     startTransition(async () => {
       const response = await fetch("/api/quiz/generate", { method: "POST" });
@@ -123,6 +174,8 @@ export function QuizWorkspace({
   const handleStartAttempt = (quizId: string) => {
     setErrorMessage(null);
     setFeedback(null);
+    setSelectedReview(null);
+    setSelectedReviewAttemptId(null);
 
     startTransition(async () => {
       const response = await fetch("/api/quiz/attempts/start", {
@@ -174,6 +227,7 @@ export function QuizWorkspace({
       const body = (await response.json().catch(() => null)) as
         | {
             error?: string;
+            attempt?: { id: string };
             feedback?: SubmissionFeedback;
           }
         | null;
@@ -186,7 +240,30 @@ export function QuizWorkspace({
       setFeedback(body.feedback);
       setActiveAttempt(null);
       setDraftResponses({});
+      if (body.attempt?.id) {
+        setSelectedReviewAttemptId(body.attempt.id);
+      }
       router.refresh();
+    });
+  };
+
+  const loadAttemptReview = (attemptId: string) => {
+    setErrorMessage(null);
+    setSelectedReviewAttemptId(attemptId);
+
+    startTransition(async () => {
+      const response = await fetch(`/api/quiz/attempts/${attemptId}`);
+      const body = (await response.json().catch(() => null)) as
+        | {
+            error?: string;
+            review?: AttemptReviewItem[];
+          }
+        | null;
+      if (!response.ok || !Array.isArray(body?.review)) {
+        setErrorMessage(body?.error ?? "Failed to load attempt review.");
+        return;
+      }
+      setSelectedReview(body.review);
     });
   };
 
@@ -218,8 +295,60 @@ export function QuizWorkspace({
           submittedAt: attempt.submitted_at
         }))
       );
+
+      const comparisonResponse = await fetch(
+        `/api/quiz/attempts/compare?timeframeDays=${nextValue}`
+      );
+      const comparisonBody = (await comparisonResponse.json().catch(() => null)) as
+        | {
+            error?: string;
+            comparison?: AttemptComparison | null;
+          }
+        | null;
+      if (!comparisonResponse.ok) {
+        setErrorMessage(comparisonBody?.error ?? "Failed to load comparison analytics.");
+        return;
+      }
+      setComparison(comparisonBody?.comparison ?? null);
     });
   };
+
+  const loadComparison = (timeframe: 7 | 14 | 30 | 90) => {
+    startTransition(async () => {
+      const response = await fetch(`/api/quiz/attempts/compare?timeframeDays=${timeframe}`);
+      const body = (await response.json().catch(() => null)) as
+        | { error?: string; comparison?: AttemptComparison | null }
+        | null;
+      if (!response.ok) {
+        setErrorMessage(body?.error ?? "Failed to load comparison analytics.");
+        return;
+      }
+      setComparison(body?.comparison ?? null);
+    });
+  };
+
+  useEffect(() => {
+    let isCancelled = false;
+    const run = async () => {
+      const response = await fetch("/api/quiz/attempts/compare?timeframeDays=30");
+      const body = (await response.json().catch(() => null)) as
+        | { error?: string; comparison?: AttemptComparison | null }
+        | null;
+      if (isCancelled) {
+        return;
+      }
+      if (!response.ok) {
+        setErrorMessage(body?.error ?? "Failed to load comparison analytics.");
+        return;
+      }
+      setComparison(body?.comparison ?? null);
+    };
+
+    void run();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -330,12 +459,24 @@ export function QuizWorkspace({
           <p>
             Score: {feedback.scorePercent}% ({feedback.correctCount}/{feedback.totalQuestions})
           </p>
-          {feedback.weakAreaPrompts.length > 0 ? (
+          {selectedReviewAttemptId ? (
+            <p>
+              <Link href={`/quiz/attempts/${selectedReviewAttemptId}`}>Open full attempt review</Link>
+            </p>
+          ) : null}
+          {feedback.weakAreas.length > 0 ? (
             <>
               <h4>Weak areas</h4>
               <ul>
-                {feedback.weakAreaPrompts.map((prompt) => (
-                  <li key={prompt}>{prompt}</li>
+                {feedback.weakAreas.map((weakArea) => (
+                  <li key={`${weakArea.conceptId ?? "none"}-${weakArea.prompt}`}>
+                    {weakArea.conceptId ? (
+                      <Link href={`/learn/${weakArea.conceptId}`}>{weakArea.conceptTitle}</Link>
+                    ) : (
+                      weakArea.conceptTitle
+                    )}
+                    : {weakArea.prompt}
+                  </li>
                 ))}
               </ul>
             </>
@@ -346,6 +487,40 @@ export function QuizWorkspace({
           <ul>
             {feedback.nextActions.map((action) => (
               <li key={action}>{action}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {selectedReview ? (
+        <section className="panel">
+          <h3>Attempt review</h3>
+          {selectedReviewAttemptId ? <p>Attempt: {selectedReviewAttemptId}</p> : null}
+          <ul>
+            {selectedReview.map((item) => (
+              <li key={item.questionId}>
+                <p>
+                  <strong>
+                    Q{item.position} ({item.questionType})
+                  </strong>{" "}
+                  - {item.isCorrect ? "Correct" : "Incorrect"}
+                </p>
+                <p>{item.prompt}</p>
+                <p>
+                  <strong>Submitted:</strong> {item.submittedAnswerText || "(no answer)"}
+                </p>
+                <p>
+                  <strong>Expected:</strong> {item.correctAnswerText}
+                </p>
+                <p>
+                  <strong>Why:</strong> {item.explanation}
+                </p>
+                {item.concept ? (
+                  <p>
+                    <Link href={`/learn/${item.concept.id}`}>Review concept: {item.concept.title}</Link>
+                  </p>
+                ) : null}
+              </li>
             ))}
           </ul>
         </section>
@@ -364,6 +539,14 @@ export function QuizWorkspace({
           <option value={30}>Last 30 days</option>
           <option value={90}>Last 90 days</option>
         </select>
+        <button
+          className="button subtle-button"
+          type="button"
+          disabled={isPending}
+          onClick={() => loadComparison(timeframeDays)}
+        >
+          {isPending ? "Refreshing..." : "Refresh comparison"}
+        </button>
         <p>{trendLabel(recentAttempts)}</p>
         <p>Average score (recent): {scoreAverage !== null ? `${scoreAverage}%` : "N/A"}</p>
         {recentAttempts.length === 0 ? (
@@ -374,9 +557,72 @@ export function QuizWorkspace({
               <li key={attempt.id}>
                 {attempt.scorePercent ?? "N/A"}% at{" "}
                 {attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString() : "not submitted"}
+                {" - "}
+                <button
+                  className="button subtle-button"
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => loadAttemptReview(attempt.id)}
+                >
+                  {selectedReviewAttemptId === attempt.id && isPending
+                    ? "Loading review..."
+                    : "Review"}
+                </button>
+                {" / "}
+                <Link href={`/quiz/attempts/${attempt.id}`}>Open page</Link>
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="panel">
+        <h3>Attempt comparison</h3>
+        {!comparison ? (
+          <p>
+            Need at least two submitted attempts in the selected timeframe to compare performance
+            shifts.
+          </p>
+        ) : (
+          <>
+            <p>
+              Current: {comparison.currentAttempt.scorePercent ?? "N/A"}% (
+              {new Date(comparison.currentAttempt.submittedAt).toLocaleString()})
+              <br />
+              Previous: {comparison.previousAttempt.scorePercent ?? "N/A"}% (
+              {new Date(comparison.previousAttempt.submittedAt).toLocaleString()})
+              <br />
+              Score delta:{" "}
+              {comparison.scoreDeltaPercent === null ? "N/A" : `${comparison.scoreDeltaPercent}%`}
+            </p>
+
+            <h4>By question type</h4>
+            <ul>
+              {comparison.byQuestionType.map((typeDelta) => (
+                <li key={typeDelta.type}>
+                  {typeDelta.type}: {typeDelta.currentAccuracyPercent ?? "N/A"}% vs{" "}
+                  {typeDelta.previousAccuracyPercent ?? "N/A"}% (delta{" "}
+                  {typeDelta.deltaPercent === null ? "N/A" : `${typeDelta.deltaPercent}%`})
+                </li>
+              ))}
+            </ul>
+
+            <h4>Weak concept shifts</h4>
+            {comparison.weakConceptDeltas.length === 0 ? (
+              <p>No concept-linked misses across the compared attempts.</p>
+            ) : (
+              <ul>
+                {comparison.weakConceptDeltas.map((conceptDelta) => (
+                  <li key={conceptDelta.conceptId}>
+                    <Link href={`/learn/${conceptDelta.conceptId}`}>{conceptDelta.conceptTitle}</Link>:{" "}
+                    {conceptDelta.currentIncorrectCount} vs {conceptDelta.previousIncorrectCount} (delta{" "}
+                    {conceptDelta.deltaIncorrectCount > 0 ? "+" : ""}
+                    {conceptDelta.deltaIncorrectCount})
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
     </div>
