@@ -15,6 +15,13 @@ interface ProgressSummary {
   dueFlashcardsNow: number;
 }
 
+type TimelineEvent = {
+  id: string;
+  event_type: string;
+  payload_json: unknown;
+  created_at: string;
+};
+
 export default async function PlanPage() {
   const session = await readSession();
   if (!session) {
@@ -95,13 +102,12 @@ export default async function PlanPage() {
     totalFlashcards: Number.parseInt(flashcardStats?.total_count ?? "0", 10),
     dueFlashcardsNow: Number.parseInt(flashcardStats?.due_now_count ?? "0", 10)
   };
-  const progressEventsResult = await executeQuery<{
-    id: string;
-    event_type: string;
-    payload_json: unknown;
-    created_at: string;
-  }>(progressQueries.listByWorkspace(workspace.id));
-  const recentEvents = progressEventsResult.rows.slice(0, 12);
+  const [recentEventsResult, totalEventsResult] = await Promise.all([
+    executeQuery<TimelineEvent>(progressQueries.listByWorkspacePaged(workspace.id, 12, 0, null)),
+    executeQuery<{ total_count: string }>(progressQueries.countByWorkspaceFiltered(workspace.id, null))
+  ]);
+  const recentEvents = recentEventsResult.rows;
+  const totalEvents = Number.parseInt(totalEventsResult.rows[0]?.total_count ?? "0", 10);
 
   return (
     <PlanWorkspace
@@ -109,6 +115,7 @@ export default async function PlanPage() {
       initialMilestones={milestonesResult.rows}
       initialSummary={summary}
       initialRecentEvents={recentEvents}
+      initialHasMoreEvents={recentEvents.length < totalEvents}
     />
   );
 }

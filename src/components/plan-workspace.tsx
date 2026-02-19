@@ -39,6 +39,7 @@ interface PlanWorkspaceProps {
     payload_json: unknown;
     created_at: string;
   }>;
+  initialHasMoreEvents: boolean;
 }
 
 const toInputDate = (value: string | null) => {
@@ -52,7 +53,8 @@ export function PlanWorkspace({
   initialPlan,
   initialMilestones,
   initialSummary,
-  initialRecentEvents
+  initialRecentEvents,
+  initialHasMoreEvents
 }: PlanWorkspaceProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -66,6 +68,9 @@ export function PlanWorkspace({
   const [editMilestoneDueDateDraft, setEditMilestoneDueDateDraft] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [recentEvents, setRecentEvents] = useState<TimelineEvent[]>(initialRecentEvents);
+  const [timelineCategory, setTimelineCategory] = useState<"all" | "milestone" | "resource">("all");
+  const [hasMoreEvents, setHasMoreEvents] = useState(initialHasMoreEvents);
 
   const completedCount = useMemo(
     () => milestones.filter((item) => item.completed_at !== null).length,
@@ -155,6 +160,12 @@ export function PlanWorkspace({
     setEditMilestoneDueDateDraft(toInputDate(milestone.due_date));
   };
 
+  const cancelMilestoneEdit = () => {
+    setEditingMilestoneId(null);
+    setEditMilestoneTitleDraft("");
+    setEditMilestoneDueDateDraft("");
+  };
+
   const saveMilestoneEdit = () => {
     if (!editingMilestoneId) {
       return;
@@ -206,9 +217,7 @@ export function PlanWorkspace({
       }
       setMilestones((previous) => previous.filter((item) => item.id !== milestoneId));
       if (editingMilestoneId === milestoneId) {
-        setEditingMilestoneId(null);
-        setEditMilestoneTitleDraft("");
-        setEditMilestoneDueDateDraft("");
+        cancelMilestoneEdit();
       }
       setSuccessMessage("Milestone deleted.");
       router.refresh();
@@ -237,6 +246,40 @@ export function PlanWorkspace({
     return byType[event.event_type] ?? event.event_type;
   };
 
+  const refreshTimeline = (
+    category: "all" | "milestone" | "resource",
+    mode: "replace" | "append"
+  ) => {
+    startTransition(async () => {
+      const offset = mode === "append" ? recentEvents.length : 0;
+      const response = await fetch(
+        `/api/progress/events?category=${category}&limit=12&offset=${offset}`
+      );
+      const body = (await response.json().catch(() => null)) as
+        | {
+            error?: string;
+            events?: TimelineEvent[];
+            hasMore?: boolean;
+          }
+        | null;
+      if (!response.ok || !Array.isArray(body?.events)) {
+        setErrorMessage(body?.error ?? "Failed to load timeline.");
+        return;
+      }
+      if (mode === "append") {
+        setRecentEvents((previous) => [...previous, ...body.events!]);
+      } else {
+        setRecentEvents(body.events);
+      }
+      setHasMoreEvents(body?.hasMore ?? false);
+    });
+  };
+
+  const handleTimelineCategoryChange = (next: "all" | "milestone" | "resource") => {
+    setTimelineCategory(next);
+    refreshTimeline(next, "replace");
+  };
+
   return (
     <div className="space-y-4">
       <section className="panel">
@@ -260,17 +303,54 @@ export function PlanWorkspace({
 
       <section className="panel">
         <h3>Recent activity timeline</h3>
-        {initialRecentEvents.length === 0 ? (
+        <div className="row">
+          <button
+            className="button subtle-button"
+            type="button"
+            disabled={isPending}
+            onClick={() => handleTimelineCategoryChange("all")}
+          >
+            All
+          </button>
+          <button
+            className="button subtle-button"
+            type="button"
+            disabled={isPending}
+            onClick={() => handleTimelineCategoryChange("milestone")}
+          >
+            Milestones
+          </button>
+          <button
+            className="button subtle-button"
+            type="button"
+            disabled={isPending}
+            onClick={() => handleTimelineCategoryChange("resource")}
+          >
+            Resources
+          </button>
+          <span style={{ alignSelf: "center" }}>Current: {timelineCategory}</span>
+        </div>
+        {recentEvents.length === 0 ? (
           <p>No progress events yet.</p>
         ) : (
           <ul>
-            {initialRecentEvents.map((event) => (
+            {recentEvents.map((event) => (
               <li key={event.id}>
                 {toTimelineMessage(event)} at {new Date(event.created_at).toLocaleString()}
               </li>
             ))}
           </ul>
         )}
+        {hasMoreEvents ? (
+          <button
+            className="button subtle-button"
+            type="button"
+            disabled={isPending}
+            onClick={() => refreshTimeline(timelineCategory, "append")}
+          >
+            {isPending ? "Loading..." : "Load more"}
+          </button>
+        ) : null}
       </section>
 
       <section className="panel">
@@ -378,7 +458,7 @@ export function PlanWorkspace({
                         className="button subtle-button"
                         type="button"
                         disabled={isPending}
-                        onClick={() => setEditingMilestoneId(null)}
+                        onClick={cancelMilestoneEdit}
                       >
                         Cancel
                       </button>

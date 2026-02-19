@@ -104,6 +104,14 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
     setEditTagsDraft(resource.tags.join(", "));
   };
 
+  const cancelResourceEdit = () => {
+    setEditingResourceId(null);
+    setEditTitleDraft("");
+    setEditUrlDraft("");
+    setEditNoteDraft("");
+    setEditTagsDraft("");
+  };
+
   const saveResourceEdit = () => {
     if (!editingResourceId) {
       return;
@@ -130,11 +138,7 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
       setResources((previous) =>
         previous.map((item) => (item.id === editingResourceId ? body.resource! : item))
       );
-      setEditingResourceId(null);
-      setEditTitleDraft("");
-      setEditUrlDraft("");
-      setEditNoteDraft("");
-      setEditTagsDraft("");
+      cancelResourceEdit();
     });
   };
 
@@ -153,11 +157,7 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
       }
       setResources((previous) => previous.filter((item) => item.id !== resourceId));
       if (editingResourceId === resourceId) {
-        setEditingResourceId(null);
-        setEditTitleDraft("");
-        setEditUrlDraft("");
-        setEditNoteDraft("");
-        setEditTagsDraft("");
+        cancelResourceEdit();
       }
     });
   };
@@ -301,7 +301,7 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
                       className="button subtle-button"
                       type="button"
                       disabled={isPending}
-                      onClick={() => setEditingResourceId(null)}
+                      onClick={cancelResourceEdit}
                     >
                       Cancel
                     </button>

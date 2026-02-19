@@ -807,6 +807,38 @@ export const progressQueries = {
       `,
       values: [workspaceId]
     };
+  },
+  listByWorkspacePaged(
+    workspaceId: string,
+    limit: number,
+    offset: number,
+    eventPrefix: string | null
+  ): SqlQuery {
+    return {
+      text: `
+        select id, workspace_id, event_type, payload_json, created_at
+        from progress_events
+        where
+          workspace_id = $1
+          and ($4::text is null or event_type like $4 || '%')
+        order by created_at desc
+        limit $2
+        offset $3
+      `,
+      values: [workspaceId, limit, offset, eventPrefix]
+    };
+  },
+  countByWorkspaceFiltered(workspaceId: string, eventPrefix: string | null): SqlQuery {
+    return {
+      text: `
+        select count(*)::int::text as total_count
+        from progress_events
+        where
+          workspace_id = $1
+          and ($2::text is null or event_type like $2 || '%')
+      `,
+      values: [workspaceId, eventPrefix]
+    };
   }
 };
 
