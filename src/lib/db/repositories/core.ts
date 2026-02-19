@@ -52,6 +52,40 @@ export const workspaceQueries = {
       `,
       values: [workspaceId, userId, role]
     };
+  },
+  listMembers(workspaceId: string): SqlQuery {
+    return {
+      text: `
+        select m.workspace_id, m.user_id, u.email, u.display_name, m.role, m.created_at
+        from workspace_members m
+        join users u on u.id = m.user_id
+        where m.workspace_id = $1
+        order by
+          case m.role when 'owner' then 0 when 'editor' then 1 else 2 end asc,
+          m.created_at asc
+      `,
+      values: [workspaceId]
+    };
+  },
+  removeMember(workspaceId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        delete from workspace_members
+        where workspace_id = $1 and user_id = $2
+      `,
+      values: [workspaceId, userId]
+    };
+  },
+  findMember(workspaceId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select workspace_id, user_id, role, created_at
+        from workspace_members
+        where workspace_id = $1 and user_id = $2
+        limit 1
+      `,
+      values: [workspaceId, userId]
+    };
   }
 };
 

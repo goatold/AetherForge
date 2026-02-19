@@ -7,7 +7,8 @@ const appLinks = [
   { href: "/flashcards", label: "Flashcards" },
   { href: "/plan", label: "Plan" },
   { href: "/resources", label: "Resources" },
-  { href: "/export", label: "Export" }
+  { href: "/export", label: "Export" },
+  { href: "/collab", label: "Collaborate" }
 ] as const;
 
 export function AppShellNav() {

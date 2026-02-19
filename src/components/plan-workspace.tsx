@@ -233,6 +233,10 @@ export function PlanWorkspace({
       payload && typeof payload.title === "string" && payload.title.trim().length > 0
         ? payload.title
         : null;
+    const email =
+      payload && typeof payload.email === "string" && payload.email.trim().length > 0
+        ? payload.email
+        : null;
     const byType: Record<string, string> = {
       plan_milestone_created: `Milestone created${title ? `: ${title}` : ""}`,
       plan_milestone_completed: `Milestone completed${title ? `: ${title}` : ""}`,
@@ -241,7 +245,10 @@ export function PlanWorkspace({
       plan_milestone_deleted: `Milestone deleted${title ? `: ${title}` : ""}`,
       resource_added: `Resource added${title ? `: ${title}` : ""}`,
       resource_updated: `Resource updated${title ? `: ${title}` : ""}`,
-      resource_deleted: `Resource deleted${title ? `: ${title}` : ""}`
+      resource_deleted: `Resource deleted${title ? `: ${title}` : ""}`,
+      collab_member_upserted: `Member invited/updated${email ? `: ${email}` : ""}`,
+      collab_member_role_updated: `Member role updated`,
+      collab_member_removed: `Member access revoked`
     };
     return byType[event.event_type] ?? event.event_type;
   };

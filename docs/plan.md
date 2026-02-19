@@ -114,6 +114,7 @@ flowchart LR
 - Phase 4: in progress (flashcard generation from quiz misses, SM-2-style scheduler utility, due-queue API, review scoring endpoint, flashcards workspace UI replacing placeholder page, an internal idempotent queue-refresh job endpoint for scheduled top-ups, and a cron-friendly job runner script).
 - Phase 5: in progress (plan title persistence, milestone create/edit/complete/delete workflow, progress snapshot widgets, progress-event timeline updates with readable labels, category filters, and pagination, resources API, and resources workspace UI replacing placeholder pages with note/tag capture, filterable search, quick tag chips, and inline edit/delete controls).
 - Phase 6: in progress (browser print-first study packet export route with section toggles, answer-key/compact options, and in-app export preview workspace).
+- Collaboration track: in progress (owner-scoped member management, invite/update via email, role transitions between editor/viewer, revoke flow, and collaboration workspace UI scaffold).
 
 ### Phase 0 (Week 1) - Foundation Hardening
 
