@@ -5,6 +5,7 @@ import {
   executeQuery,
   planMilestoneQueries,
   planQueries,
+  progressQueries,
   workspaceQueries
 } from "@/lib/db";
 
@@ -70,8 +71,22 @@ export async function POST(request: Request) {
     due_date: string | null;
     completed_at: string | null;
   }>(planMilestoneQueries.insert(plan.id, title, parseDueDate(body.dueDate)));
+  const milestone = milestoneResult.rows[0] ?? null;
+  if (milestone) {
+    await executeQuery(
+      progressQueries.insert(
+        workspace.id,
+        "plan_milestone_created",
+        JSON.stringify({
+          milestoneId: milestone.id,
+          title: milestone.title,
+          dueDate: milestone.due_date
+        })
+      )
+    );
+  }
 
   return NextResponse.json({
-    milestone: milestoneResult.rows[0] ?? null
+    milestone
   });
 }

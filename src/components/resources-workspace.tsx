@@ -26,6 +26,15 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
   const [queryDraft, setQueryDraft] = useState("");
   const [tagFilterDraft, setTagFilterDraft] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const tagCounts = resources.reduce((map, resource) => {
+    resource.tags.forEach((tag) => {
+      map.set(tag, (map.get(tag) ?? 0) + 1);
+    });
+    return map;
+  }, new Map<string, number>());
+  const popularTags = [...tagCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
 
   const refreshResources = async (query: string, tag: string) => {
     const params = new URLSearchParams();
@@ -117,6 +126,27 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
 
       <section className="panel">
         <h3>Saved resources</h3>
+        {popularTags.length > 0 ? (
+          <div className="row">
+            {popularTags.map(([tag, count]) => (
+              <button
+                key={tag}
+                className="button subtle-button"
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setTagFilterDraft(tag);
+                  setQueryDraft("");
+                  startTransition(async () => {
+                    await refreshResources("", tag);
+                  });
+                }}
+              >
+                #{tag} ({count})
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="row">
           <input
             value={queryDraft}

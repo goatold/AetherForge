@@ -112,7 +112,7 @@ flowchart LR
 - Phase 2: complete (provider-backed concept generation path with strict validation, artifact lineage persistence, and explorer/detail + artifact graph/reload flows).
 - Phase 3: in progress (quiz generation from concepts, attempt start/submit scoring flow, concept-linked weak-area feedback, attempt trend visibility with timeframe query support, deep-linkable question-by-question review pages, attempt comparison analytics across workspace and per-attempt views, and targeted retry quiz generation from weak concepts).
 - Phase 4: in progress (flashcard generation from quiz misses, SM-2-style scheduler utility, due-queue API, review scoring endpoint, flashcards workspace UI replacing placeholder page, an internal idempotent queue-refresh job endpoint for scheduled top-ups, and a cron-friendly job runner script).
-- Phase 5: in progress (plan title persistence, milestone creation/completion workflow, progress snapshot widgets, resources API, and resources workspace UI replacing placeholder pages with note/tag capture and filterable search).
+- Phase 5: in progress (plan title persistence, milestone creation/completion workflow, progress snapshot widgets, progress-event timeline updates, resources API, and resources workspace UI replacing placeholder pages with note/tag capture, filterable search, and quick tag chips).
 
 ### Phase 0 (Week 1) - Foundation Hardening
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { readSession } from "@/lib/auth/session";
-import { executeQuery, resourceQueries, workspaceQueries } from "@/lib/db";
+import { executeQuery, progressQueries, resourceQueries, workspaceQueries } from "@/lib/db";
 
 interface ResourceBody {
   title?: string;
@@ -127,8 +127,22 @@ export async function POST(request: Request) {
       normalizeTags(body.tags)
     )
   );
+  const resource = createdResult.rows[0] ?? null;
+  if (resource) {
+    await executeQuery(
+      progressQueries.insert(
+        workspace.id,
+        "resource_added",
+        JSON.stringify({
+          resourceId: resource.id,
+          title: resource.title,
+          tags: resource.tags
+        })
+      )
+    );
+  }
 
   return NextResponse.json({
-    resource: createdResult.rows[0] ?? null
+    resource
   });
 }

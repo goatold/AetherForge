@@ -26,6 +26,12 @@ interface PlanWorkspaceProps {
     totalFlashcards: number;
     dueFlashcardsNow: number;
   };
+  initialRecentEvents: Array<{
+    id: string;
+    event_type: string;
+    payload_json: unknown;
+    created_at: string;
+  }>;
 }
 
 const toInputDate = (value: string | null) => {
@@ -38,7 +44,8 @@ const toInputDate = (value: string | null) => {
 export function PlanWorkspace({
   initialPlan,
   initialMilestones,
-  initialSummary
+  initialSummary,
+  initialRecentEvents
 }: PlanWorkspaceProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -150,6 +157,21 @@ export function PlanWorkspace({
             Flashcards due now: {initialSummary.dueFlashcardsNow}/{initialSummary.totalFlashcards}
           </li>
         </ul>
+      </section>
+
+      <section className="panel">
+        <h3>Recent activity timeline</h3>
+        {initialRecentEvents.length === 0 ? (
+          <p>No progress events yet.</p>
+        ) : (
+          <ul>
+            {initialRecentEvents.map((event) => (
+              <li key={event.id}>
+                {event.event_type} at {new Date(event.created_at).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="panel">

@@ -4,6 +4,7 @@ import {
   executeQuery,
   planMilestoneQueries,
   planQueries,
+  progressQueries,
   workspaceQueries
 } from "@/lib/db";
 
@@ -94,12 +95,20 @@ export default async function PlanPage() {
     totalFlashcards: Number.parseInt(flashcardStats?.total_count ?? "0", 10),
     dueFlashcardsNow: Number.parseInt(flashcardStats?.due_now_count ?? "0", 10)
   };
+  const progressEventsResult = await executeQuery<{
+    id: string;
+    event_type: string;
+    payload_json: unknown;
+    created_at: string;
+  }>(progressQueries.listByWorkspace(workspace.id));
+  const recentEvents = progressEventsResult.rows.slice(0, 12);
 
   return (
     <PlanWorkspace
       initialPlan={plan}
       initialMilestones={milestonesResult.rows}
       initialSummary={summary}
+      initialRecentEvents={recentEvents}
     />
   );
 }
