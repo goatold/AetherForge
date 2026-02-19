@@ -121,6 +121,15 @@ export const generateBootstrapQuizPayload = (
   concepts: QuizGenerationConceptInput[]
 ): QuizGenerationPayload => {
   const selectedConcepts = concepts.slice(0, 6);
+  if (selectedConcepts.length === 0) {
+    return {
+      artifactVersion: 1,
+      provider: "aetherforge-bootstrap",
+      model: "phase3-template-v1",
+      title: `${topic} mixed practice`,
+      questions: []
+    };
+  }
   const questions: QuizQuestionInput[] = [];
 
   selectedConcepts.forEach((concept, index) => {
@@ -135,13 +144,11 @@ export const generateBootstrapQuizPayload = (
     questions.push(buildShortAnswerQuestion(concept));
   });
 
-  if (questions.length < 3) {
-    selectedConcepts.forEach((concept) => {
-      if (questions.length >= 3) {
-        return;
-      }
-      questions.push(buildMcqQuestion(concept, difficulty));
-    });
+  let conceptIndex = 0;
+  while (questions.length < 3) {
+    const concept = selectedConcepts[conceptIndex % selectedConcepts.length];
+    questions.push(buildMcqQuestion(concept, difficulty));
+    conceptIndex += 1;
   }
 
   return {

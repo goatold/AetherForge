@@ -171,6 +171,35 @@ export function QuizWorkspace({
     });
   };
 
+  const handleGenerateTargetedRetry = () => {
+    setErrorMessage(null);
+    const conceptIds = [
+      ...new Set(
+        (feedback?.weakAreas ?? [])
+          .map((weakArea) => weakArea.conceptId)
+          .filter((conceptId): conceptId is string => typeof conceptId === "string")
+      )
+    ];
+    if (conceptIds.length === 0) {
+      setErrorMessage("No weak concepts available for targeted retry yet.");
+      return;
+    }
+
+    startTransition(async () => {
+      const response = await fetch("/api/quiz/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ conceptIds })
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        setErrorMessage(body?.error ?? "Failed to generate targeted retry quiz.");
+        return;
+      }
+      router.refresh();
+    });
+  };
+
   const handleStartAttempt = (quizId: string) => {
     setErrorMessage(null);
     setFeedback(null);
@@ -489,6 +518,14 @@ export function QuizWorkspace({
               <li key={action}>{action}</li>
             ))}
           </ul>
+          <button
+            className="button"
+            type="button"
+            disabled={isPending}
+            onClick={handleGenerateTargetedRetry}
+          >
+            {isPending ? "Generating retry..." : "Generate targeted retry quiz"}
+          </button>
         </section>
       ) : null}
 
