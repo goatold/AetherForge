@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 type ExportSection = "concepts" | "quiz" | "flashcards" | "plan" | "resources";
+type PageSize = "a4" | "letter";
 
 const SECTION_OPTIONS: Array<{ id: ExportSection; label: string }> = [
   { id: "concepts", label: "Concept summaries" },
@@ -12,13 +13,19 @@ const SECTION_OPTIONS: Array<{ id: ExportSection; label: string }> = [
   { id: "resources", label: "Resources" }
 ];
 
-const buildPacketUrl = (sections: ExportSection[], includeAnswerKey: boolean, compact: boolean) => {
+const buildPacketUrl = (
+  sections: ExportSection[],
+  includeAnswerKey: boolean,
+  compact: boolean,
+  pageSize: PageSize
+) => {
   const params = new URLSearchParams();
   sections.forEach((section) => {
     params.append("sections", section);
   });
   params.set("includeAnswerKey", includeAnswerKey ? "1" : "0");
   params.set("compact", compact ? "1" : "0");
+  params.set("pageSize", pageSize);
   return `/api/export/study-packet?${params.toString()}`;
 };
 
@@ -26,10 +33,11 @@ export function ExportWorkspace() {
   const [sections, setSections] = useState<ExportSection[]>(["concepts", "quiz", "flashcards", "plan"]);
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
   const [compact, setCompact] = useState(false);
+  const [pageSize, setPageSize] = useState<PageSize>("a4");
 
   const packetUrl = useMemo(
-    () => buildPacketUrl(sections, includeAnswerKey, compact),
-    [sections, includeAnswerKey, compact]
+    () => buildPacketUrl(sections, includeAnswerKey, compact, pageSize),
+    [sections, includeAnswerKey, compact, pageSize]
   );
 
   const toggleSection = (section: ExportSection) => {
@@ -74,6 +82,16 @@ export function ExportWorkspace() {
               onChange={(event) => setCompact(event.target.checked)}
             />{" "}
             Compact mode
+          </label>
+          <label>
+            Page size{" "}
+            <select
+              value={pageSize}
+              onChange={(event) => setPageSize(event.target.value as PageSize)}
+            >
+              <option value="a4">A4</option>
+              <option value="letter">Letter</option>
+            </select>
           </label>
         </div>
         <div className="row">

@@ -15,8 +15,10 @@ import {
 } from "@/lib/db";
 
 type ExportSection = "concepts" | "quiz" | "flashcards" | "plan" | "resources";
+type PageSize = "a4" | "letter";
 
 const ALL_SECTIONS: ExportSection[] = ["concepts", "quiz", "flashcards", "plan", "resources"];
+const ALL_PAGE_SIZES: PageSize[] = ["a4", "letter"];
 
 const escapeHtml = (value: string): string =>
   value
@@ -49,6 +51,14 @@ const parseBoolean = (value: string | null, fallback: boolean) => {
   return fallback;
 };
 
+const parsePageSize = (value: string | null): PageSize => {
+  if (!value) {
+    return "a4";
+  }
+  const normalized = value.trim().toLowerCase();
+  return ALL_PAGE_SIZES.includes(normalized as PageSize) ? (normalized as PageSize) : "a4";
+};
+
 const renderSectionTitle = (title: string) => `<h2>${escapeHtml(title)}</h2>`;
 
 export async function GET(request: Request) {
@@ -71,6 +81,9 @@ export async function GET(request: Request) {
   const sections = parseSections(searchParams);
   const includeAnswerKey = parseBoolean(searchParams.get("includeAnswerKey"), true);
   const compact = parseBoolean(searchParams.get("compact"), false);
+  const pageSize = parsePageSize(searchParams.get("pageSize"));
+  const pageCssSize = pageSize === "letter" ? "Letter" : "A4";
+  const pageMargin = compact ? "11mm" : "14mm";
 
   const chunks: string[] = [];
   const generatedAt = new Date().toISOString();
@@ -79,6 +92,7 @@ export async function GET(request: Request) {
     `<p><strong>Topic:</strong> ${escapeHtml(workspace.topic)} (${escapeHtml(workspace.difficulty)})</p>`
   );
   chunks.push(`<p><strong>Generated:</strong> ${escapeHtml(new Date(generatedAt).toLocaleString())}</p>`);
+  chunks.push(`<p><strong>Layout:</strong> ${escapeHtml(pageCssSize)} (${compact ? "compact" : "detailed"})</p>`);
 
   if (sections.includes("concepts")) {
     const conceptsResult = await executeQuery<{
@@ -237,18 +251,79 @@ export async function GET(request: Request) {
     <meta charset="utf-8" />
     <title>AetherForge Study Packet</title>
     <style>
-      @page { margin: 14mm; }
-      body { font-family: Arial, sans-serif; color: #111; }
-      h1 { margin-bottom: 0.25rem; }
-      h2 { margin-top: 1.4rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; }
-      p, li, td, th { line-height: 1.4; font-size: 12px; }
-      table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-      th, td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
-      .provenance { font-size: 11px; color: #444; }
+      @page { size: ${pageCssSize}; margin: ${pageMargin}; }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #111;
+      }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .packet {
+        width: 100%;
+        margin: 0 auto;
+      }
+      h1 { margin: 0 0 0.35rem; line-height: 1.25; }
+      h2 {
+        margin: 1.4rem 0 0.55rem;
+        border-bottom: 1px solid #222;
+        padding-bottom: 0.25rem;
+        break-after: avoid-page;
+        page-break-after: avoid;
+      }
+      p, li, td, th {
+        line-height: 1.45;
+        font-size: 12px;
+        orphans: 3;
+        widows: 3;
+      }
+      ol, ul {
+        margin: 0.2rem 0 0.9rem;
+        padding-left: 1.2rem;
+      }
+      li {
+        break-inside: avoid-page;
+        page-break-inside: avoid;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.5rem;
+        table-layout: fixed;
+      }
+      thead {
+        display: table-header-group;
+      }
+      tr {
+        break-inside: avoid-page;
+        page-break-inside: avoid;
+      }
+      th, td {
+        border: 1px solid #333;
+        padding: 6px;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      hr {
+        border: 0;
+        border-top: 1px solid #555;
+        margin: 1rem 0 0.75rem;
+      }
+      .provenance {
+        font-size: 11px;
+        color: #222;
+      }
     </style>
   </head>
   <body>
-    ${chunks.join("\n")}
+    <main class="packet">
+      ${chunks.join("\n")}
+    </main>
   </body>
 </html>`;
 
