@@ -478,25 +478,119 @@ export const quizAttemptAnswerQueries = {
 };
 
 export const flashcardQueries = {
-  insert(workspaceId: string, front: string, back: string): SqlQuery {
+  insert(
+    workspaceId: string,
+    front: string,
+    back: string,
+    conceptId: string | null,
+    source: "quiz_miss" | "concept" = "quiz_miss"
+  ): SqlQuery {
     return {
       text: `
-        insert into flashcards (workspace_id, front, back)
-        values ($1, $2, $3)
-        returning id, workspace_id, front, back, created_at
+        insert into flashcards (workspace_id, front, back, concept_id, source)
+        values ($1, $2, $3, $4, $5)
+        returning id, workspace_id, front, back, concept_id, source, ease_factor, interval_days, repetition_count, next_review_at, last_reviewed_at, created_at
       `,
-      values: [workspaceId, front, back]
+      values: [workspaceId, front, back, conceptId, source]
     };
   },
   listByWorkspace(workspaceId: string): SqlQuery {
     return {
       text: `
-        select id, workspace_id, front, back, created_at
+        select id, workspace_id, front, back, concept_id, source, ease_factor, interval_days, repetition_count, next_review_at, last_reviewed_at, created_at
         from flashcards
         where workspace_id = $1
-        order by created_at desc
+        order by next_review_at asc, created_at desc
       `,
       values: [workspaceId]
+    };
+  },
+  listByWorkspaceForUser(workspaceId: string, userId: string, limit: number): SqlQuery {
+    return {
+      text: `
+        select f.id, f.workspace_id, f.front, f.back, f.concept_id, c.title as concept_title, f.source, f.ease_factor, f.interval_days, f.repetition_count, f.next_review_at, f.last_reviewed_at, f.created_at
+        from flashcards f
+        join workspace_members m on m.workspace_id = f.workspace_id
+        left join concepts c on c.id = f.concept_id
+        where f.workspace_id = $1 and m.user_id = $2
+        order by f.next_review_at asc, f.created_at desc
+        limit $3
+      `,
+      values: [workspaceId, userId, limit]
+    };
+  },
+  listDueByWorkspaceForUser(workspaceId: string, userId: string, limit: number): SqlQuery {
+    return {
+      text: `
+        select f.id, f.workspace_id, f.front, f.back, f.concept_id, c.title as concept_title, f.source, f.ease_factor, f.interval_days, f.repetition_count, f.next_review_at, f.last_reviewed_at, f.created_at
+        from flashcards f
+        join workspace_members m on m.workspace_id = f.workspace_id
+        left join concepts c on c.id = f.concept_id
+        where f.workspace_id = $1 and m.user_id = $2 and f.next_review_at <= now()
+        order by f.next_review_at asc, f.created_at asc
+        limit $3
+      `,
+      values: [workspaceId, userId, limit]
+    };
+  },
+  findByIdForUser(flashcardId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select f.id, f.workspace_id, f.front, f.back, f.concept_id, c.title as concept_title, f.source, f.ease_factor, f.interval_days, f.repetition_count, f.next_review_at, f.last_reviewed_at, f.created_at
+        from flashcards f
+        join workspace_members m on m.workspace_id = f.workspace_id
+        left join concepts c on c.id = f.concept_id
+        where f.id = $1 and m.user_id = $2
+        limit 1
+      `,
+      values: [flashcardId, userId]
+    };
+  },
+  applyReviewUpdate(
+    flashcardId: string,
+    easeFactor: number,
+    intervalDays: number,
+    repetitionCount: number,
+    nextReviewAtIso: string
+  ): SqlQuery {
+    return {
+      text: `
+        update flashcards
+        set
+          ease_factor = $2,
+          interval_days = $3,
+          repetition_count = $4,
+          last_reviewed_at = now(),
+          next_review_at = $5::timestamptz
+        where id = $1
+        returning id, workspace_id, front, back, concept_id, source, ease_factor, interval_days, repetition_count, next_review_at, last_reviewed_at, created_at
+      `,
+      values: [flashcardId, easeFactor, intervalDays, repetitionCount, nextReviewAtIso]
+    };
+  }
+};
+
+export const flashcardReviewQueries = {
+  insert(
+    flashcardId: string,
+    userId: string,
+    recallScore: number,
+    scheduledIntervalDays: number,
+    nextReviewAtIso: string
+  ): SqlQuery {
+    return {
+      text: `
+        insert into flashcard_reviews (
+          flashcard_id,
+          user_id,
+          recall_score,
+          scheduled_interval_days,
+          next_review_at
+        )
+        values ($1, $2, $3, $4, $5::timestamptz)
+        returning id, flashcard_id, user_id, recall_score, reviewed_at, scheduled_interval_days, next_review_at
+      `,
+      values: [flashcardId, userId, recallScore, scheduledIntervalDays, nextReviewAtIso]
     };
   }
 };
