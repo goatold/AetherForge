@@ -408,6 +408,73 @@ export const collabAuditQueries = {
   }
 };
 
+export const internalJobRunQueries = {
+  insert(jobName: string, status: "running" | "succeeded" | "failed", payloadJson: string): SqlQuery {
+    return {
+      text: `
+        insert into internal_job_runs (job_name, status, payload_json)
+        values ($1, $2, $3::jsonb)
+        returning id, job_name, status, started_at, finished_at, payload_json, error_message
+      `,
+      values: [jobName, status, payloadJson]
+    };
+  },
+  completeSuccess(jobRunId: string, payloadJson: string): SqlQuery {
+    return {
+      text: `
+        update internal_job_runs
+        set
+          status = 'succeeded',
+          finished_at = now(),
+          payload_json = $2::jsonb,
+          error_message = null
+        where id = $1
+        returning id, job_name, status, started_at, finished_at, payload_json, error_message
+      `,
+      values: [jobRunId, payloadJson]
+    };
+  },
+  completeFailure(jobRunId: string, payloadJson: string, errorMessage: string): SqlQuery {
+    return {
+      text: `
+        update internal_job_runs
+        set
+          status = 'failed',
+          finished_at = now(),
+          payload_json = $2::jsonb,
+          error_message = $3
+        where id = $1
+        returning id, job_name, status, started_at, finished_at, payload_json, error_message
+      `,
+      values: [jobRunId, payloadJson, errorMessage]
+    };
+  },
+  latestByJob(jobName: string): SqlQuery {
+    return {
+      text: `
+        select id, job_name, status, started_at, finished_at, payload_json, error_message
+        from internal_job_runs
+        where job_name = $1
+        order by started_at desc
+        limit 1
+      `,
+      values: [jobName]
+    };
+  },
+  latestSuccessByJob(jobName: string): SqlQuery {
+    return {
+      text: `
+        select id, job_name, status, started_at, finished_at, payload_json, error_message
+        from internal_job_runs
+        where job_name = $1 and status = 'succeeded'
+        order by started_at desc
+        limit 1
+      `,
+      values: [jobName]
+    };
+  }
+};
+
 export const conceptQueries = {
   insert(workspaceId: string, title: string, summary: string): SqlQuery {
     return {

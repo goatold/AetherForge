@@ -10,7 +10,8 @@
     "db:migrate": "bash scripts/db/migrate.sh",
     "db:seed": "bash scripts/db/seed.sh",
     "test:smoke:pre-phase3": "python3 scripts/tests/pre_phase3_smoke.py",
-    "job:flashcards:refresh": "bash scripts/jobs/refresh_flashcards_queue.sh"
+    "job:flashcards:refresh": "bash scripts/jobs/refresh_flashcards_queue.sh",
+    "health:check": "bash scripts/jobs/check_internal_health.sh"
   },
   "dependencies": {
     "next": "^15.1.0",

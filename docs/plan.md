@@ -115,6 +115,7 @@ flowchart LR
 - Phase 5: in progress (plan title persistence, milestone create/edit/complete/delete workflow, progress snapshot widgets, progress-event timeline updates with readable labels, category filters, and pagination, resources API, and resources workspace UI replacing placeholder pages with note/tag capture, filterable search, quick tag chips, and inline edit/delete controls).
 - Phase 6: in progress (browser print-first study packet export route with section toggles, answer-key/compact options, A4/Letter page-size controls, improved print-fidelity CSS, and in-app export preview workspace).
 - Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, and collaboration workspace UI scaffold).
+- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, and baseline reliability runbook).
 
 ### Phase 0 (Week 1) - Foundation Hardening
 

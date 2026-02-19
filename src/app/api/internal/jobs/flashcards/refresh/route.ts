@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { executeQuery } from "@/lib/db";
+import { executeQuery, internalJobRunQueries } from "@/lib/db";
 import { generateFlashcardsFromWeakConcepts } from "@/lib/flashcards/generate-from-weak-concepts";
 
 const MAX_WORKSPACES_PER_RUN = 100;
 const MAX_NEW_FLASHCARDS_PER_WORKSPACE = 8;
+const JOB_NAME = "flashcards_queue_refresh";
 
 const authorized = (request: Request): boolean => {
   const token = process.env.INTERNAL_JOB_TOKEN;
@@ -24,44 +25,79 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const targetsResult = await executeQuery<{ workspace_id: string; user_id: string }>({
-    text: `
-      select distinct
-        z.workspace_id,
-        qa.user_id
-      from quiz_attempt_answers a
-      join quiz_attempts qa on qa.id = a.quiz_attempt_id
-      join quizzes z on z.id = qa.quiz_id
-      where
-        qa.status = 'submitted'
-        and a.is_correct = false
-      order by z.workspace_id asc
-      limit $1
-    `,
-    values: [MAX_WORKSPACES_PER_RUN]
-  });
-
-  const details = await Promise.all(
-    targetsResult.rows.map(async (target) => {
-      const generated = await generateFlashcardsFromWeakConcepts(
-        target.workspace_id,
-        target.user_id,
-        MAX_NEW_FLASHCARDS_PER_WORKSPACE
-      );
-      return {
-        workspaceId: target.workspace_id,
-        userId: target.user_id,
-        createdCount: generated.createdCount,
-        skipped: generated.skipped,
-        totalWeakConcepts: generated.totalWeakConcepts
-      };
-    })
+  const startedRun = await executeQuery<{ id: string }>(
+    internalJobRunQueries.insert(
+      JOB_NAME,
+      "running",
+      JSON.stringify({
+        maxWorkspacesPerRun: MAX_WORKSPACES_PER_RUN,
+        maxNewFlashcardsPerWorkspace: MAX_NEW_FLASHCARDS_PER_WORKSPACE
+      })
+    )
   );
+  const runId = startedRun.rows[0]?.id;
 
-  return NextResponse.json({
-    processedWorkspaces: details.length,
-    createdCount: details.reduce((sum, item) => sum + item.createdCount, 0),
-    skippedCount: details.reduce((sum, item) => sum + item.skipped, 0),
-    details
-  });
+  try {
+    const targetsResult = await executeQuery<{ workspace_id: string; user_id: string }>({
+      text: `
+        select distinct
+          z.workspace_id,
+          qa.user_id
+        from quiz_attempt_answers a
+        join quiz_attempts qa on qa.id = a.quiz_attempt_id
+        join quizzes z on z.id = qa.quiz_id
+        where
+          qa.status = 'submitted'
+          and a.is_correct = false
+        order by z.workspace_id asc
+        limit $1
+      `,
+      values: [MAX_WORKSPACES_PER_RUN]
+    });
+
+    const details = await Promise.all(
+      targetsResult.rows.map(async (target) => {
+        const generated = await generateFlashcardsFromWeakConcepts(
+          target.workspace_id,
+          target.user_id,
+          MAX_NEW_FLASHCARDS_PER_WORKSPACE
+        );
+        return {
+          workspaceId: target.workspace_id,
+          userId: target.user_id,
+          createdCount: generated.createdCount,
+          skipped: generated.skipped,
+          totalWeakConcepts: generated.totalWeakConcepts
+        };
+      })
+    );
+
+    const result = {
+      processedWorkspaces: details.length,
+      createdCount: details.reduce((sum, item) => sum + item.createdCount, 0),
+      skippedCount: details.reduce((sum, item) => sum + item.skipped, 0),
+      details
+    };
+
+    if (runId) {
+      await executeQuery(internalJobRunQueries.completeSuccess(runId, JSON.stringify(result)));
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    if (runId) {
+      const message = error instanceof Error ? error.message : "Unexpected internal job error";
+      await executeQuery(
+        internalJobRunQueries.completeFailure(
+          runId,
+          JSON.stringify({
+            maxWorkspacesPerRun: MAX_WORKSPACES_PER_RUN,
+            maxNewFlashcardsPerWorkspace: MAX_NEW_FLASHCARDS_PER_WORKSPACE
+          }),
+          message
+        )
+      );
+    }
+    return NextResponse.json({ error: "Failed to refresh flashcard queue" }, { status: 500 });
+  }
 }

@@ -25,6 +25,15 @@ AetherForge is an AI-powered learning app focused on helping users learn a chose
 - Trigger the internal Phase 4 queue top-up job:
   - `npm run job:flashcards:refresh`
 
+## Reliability Health Check
+
+- Query internal runtime health (DB probe + flashcard job diagnostics):
+  - `npm run health:check`
+- Endpoint:
+  - `GET /api/internal/health` with `Authorization: Bearer <INTERNAL_JOB_TOKEN>`
+- Operational runbook:
+  - `docs/reliability-runbook.md`
+
 ## Initial Scope
 
 - Single-topic MVP with selectable difficulty
