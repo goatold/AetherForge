@@ -6,6 +6,8 @@ import { executeQuery, resourceQueries, workspaceQueries } from "@/lib/db";
 interface ResourceBody {
   title?: string;
   url?: string | null;
+  noteText?: string | null;
+  tags?: string[] | string | null;
 }
 
 const normalizeUrl = (value: string | null | undefined): string | null => {
@@ -19,7 +21,32 @@ const normalizeUrl = (value: string | null | undefined): string | null => {
   return trimmed;
 };
 
-export async function GET() {
+const normalizeNote = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeTags = (value: ResourceBody["tags"]): string[] => {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((item) => String(item).trim().toLowerCase()).filter(Boolean))].slice(0, 12);
+  }
+  if (typeof value === "string") {
+    return [
+      ...new Set(
+        value
+          .split(",")
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean)
+      )
+    ].slice(0, 12);
+  }
+  return [];
+};
+
+export async function GET(request: Request) {
   const session = await readSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,17 +57,32 @@ export async function GET() {
   if (!workspace) {
     return NextResponse.json({ resources: [] });
   }
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get("q")?.trim() ?? "";
+  const tag = searchParams.get("tag")?.trim().toLowerCase() ?? "";
 
   const resourcesResult = await executeQuery<{
     id: string;
     workspace_id: string;
     title: string;
     url: string | null;
+    note_text: string | null;
+    tags: string[];
     created_at: string;
-  }>(resourceQueries.listByWorkspace(workspace.id));
+  }>(
+    resourceQueries.listByWorkspaceFiltered(
+      workspace.id,
+      q.length > 0 ? q : null,
+      tag.length > 0 ? tag : null
+    )
+  );
 
   return NextResponse.json({
-    resources: resourcesResult.rows
+    resources: resourcesResult.rows,
+    filters: {
+      q,
+      tag
+    }
   });
 }
 
@@ -73,8 +115,18 @@ export async function POST(request: Request) {
     workspace_id: string;
     title: string;
     url: string | null;
+    note_text: string | null;
+    tags: string[];
     created_at: string;
-  }>(resourceQueries.insert(workspace.id, title, normalizeUrl(body.url)));
+  }>(
+    resourceQueries.insert(
+      workspace.id,
+      title,
+      normalizeUrl(body.url),
+      normalizeNote(body.noteText),
+      normalizeTags(body.tags)
+    )
+  );
 
   return NextResponse.json({
     resource: createdResult.rows[0] ?? null

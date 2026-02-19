@@ -31,6 +31,8 @@ export default async function ResourcesPage() {
     workspace_id: string;
     title: string;
     url: string | null;
+    note_text: string | null;
+    tags: string[];
     created_at: string;
   }>(resourceQueries.listByWorkspace(workspace.id));
 

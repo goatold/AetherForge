@@ -669,25 +669,53 @@ export const planMilestoneQueries = {
 };
 
 export const resourceQueries = {
-  insert(workspaceId: string, title: string, url: string | null): SqlQuery {
+  insert(
+    workspaceId: string,
+    title: string,
+    url: string | null,
+    noteText: string | null,
+    tags: string[]
+  ): SqlQuery {
     return {
       text: `
-        insert into resources (workspace_id, title, url)
-        values ($1, $2, $3)
-        returning id, workspace_id, title, url, created_at
+        insert into resources (workspace_id, title, url, note_text, tags)
+        values ($1, $2, $3, $4, $5::text[])
+        returning id, workspace_id, title, url, note_text, tags, created_at
       `,
-      values: [workspaceId, title, url]
+      values: [workspaceId, title, url, noteText, tags]
     };
   },
   listByWorkspace(workspaceId: string): SqlQuery {
     return {
       text: `
-        select id, workspace_id, title, url, created_at
+        select id, workspace_id, title, url, note_text, tags, created_at
         from resources
         where workspace_id = $1
         order by created_at desc
       `,
       values: [workspaceId]
+    };
+  },
+  listByWorkspaceFiltered(workspaceId: string, searchTerm: string | null, tag: string | null): SqlQuery {
+    return {
+      text: `
+        select id, workspace_id, title, url, note_text, tags, created_at
+        from resources
+        where
+          workspace_id = $1
+          and (
+            $2::text is null
+            or title ilike '%' || $2 || '%'
+            or coalesce(url, '') ilike '%' || $2 || '%'
+            or coalesce(note_text, '') ilike '%' || $2 || '%'
+          )
+          and (
+            $3::text is null
+            or $3 = any(tags)
+          )
+        order by created_at desc
+      `,
+      values: [workspaceId, searchTerm, tag]
     };
   }
 };

@@ -20,6 +20,12 @@ interface MilestoneRecord {
 interface PlanWorkspaceProps {
   initialPlan: PlanRecord | null;
   initialMilestones: MilestoneRecord[];
+  initialSummary: {
+    submittedQuizAttempts: number;
+    averageQuizScorePercent: number | null;
+    totalFlashcards: number;
+    dueFlashcardsNow: number;
+  };
 }
 
 const toInputDate = (value: string | null) => {
@@ -29,7 +35,11 @@ const toInputDate = (value: string | null) => {
   return value.slice(0, 10);
 };
 
-export function PlanWorkspace({ initialPlan, initialMilestones }: PlanWorkspaceProps) {
+export function PlanWorkspace({
+  initialPlan,
+  initialMilestones,
+  initialSummary
+}: PlanWorkspaceProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [plan, setPlan] = useState<PlanRecord | null>(initialPlan);
@@ -44,6 +54,7 @@ export function PlanWorkspace({ initialPlan, initialMilestones }: PlanWorkspaceP
     () => milestones.filter((item) => item.completed_at !== null).length,
     [milestones]
   );
+  const completionRatio = `${completedCount}/${milestones.length}`;
 
   const savePlanTitle = () => {
     setErrorMessage(null);
@@ -123,6 +134,25 @@ export function PlanWorkspace({ initialPlan, initialMilestones }: PlanWorkspaceP
   return (
     <div className="space-y-4">
       <section className="panel">
+        <h3>Progress snapshot</h3>
+        <ul>
+          <li>Submitted quiz attempts: {initialSummary.submittedQuizAttempts}</li>
+          <li>
+            Average quiz score:{" "}
+            {initialSummary.averageQuizScorePercent === null
+              ? "N/A"
+              : `${initialSummary.averageQuizScorePercent}%`}
+          </li>
+          <li>
+            Milestones complete: {completionRatio}
+          </li>
+          <li>
+            Flashcards due now: {initialSummary.dueFlashcardsNow}/{initialSummary.totalFlashcards}
+          </li>
+        </ul>
+      </section>
+
+      <section className="panel">
         <h2>Learning plan and progress</h2>
         <p>Track milestones with deadlines and completion state for your current workspace.</p>
         <label htmlFor="plan-title">Plan title</label>
@@ -158,7 +188,7 @@ export function PlanWorkspace({ initialPlan, initialMilestones }: PlanWorkspaceP
           </button>
         </div>
         <p>
-          Progress: {completedCount}/{milestones.length} completed
+          Progress: {completionRatio} completed
         </p>
         {errorMessage ? <p role="alert">{errorMessage}</p> : null}
         {successMessage ? <p>{successMessage}</p> : null}
