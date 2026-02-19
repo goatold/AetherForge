@@ -18,6 +18,13 @@ AetherForge is an AI-powered learning app focused on helping users learn a chose
 - Optional target URL:
   - `python3 scripts/tests/pre_phase3_smoke.py --base-url http://localhost:3002`
 
+## Flashcard Queue Refresh Job
+
+- Set `INTERNAL_JOB_TOKEN` in `.env.local`.
+- Ensure the app is running at `NEXT_PUBLIC_APP_URL`.
+- Trigger the internal Phase 4 queue top-up job:
+  - `npm run job:flashcards:refresh`
+
 ## Initial Scope
 
 - Single-topic MVP with selectable difficulty

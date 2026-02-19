@@ -620,6 +620,54 @@ export const planQueries = {
   }
 };
 
+export const planMilestoneQueries = {
+  insert(learningPlanId: string, title: string, dueDate: string | null): SqlQuery {
+    return {
+      text: `
+        insert into learning_plan_milestones (learning_plan_id, title, due_date)
+        values ($1, $2, $3::date)
+        returning id, learning_plan_id, title, due_date, completed_at
+      `,
+      values: [learningPlanId, title, dueDate]
+    };
+  },
+  listByPlan(learningPlanId: string): SqlQuery {
+    return {
+      text: `
+        select id, learning_plan_id, title, due_date, completed_at
+        from learning_plan_milestones
+        where learning_plan_id = $1
+        order by due_date asc nulls last, title asc
+      `,
+      values: [learningPlanId]
+    };
+  },
+  findByIdForUser(milestoneId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select lm.id, lm.learning_plan_id, lm.title, lm.due_date, lm.completed_at
+        from learning_plan_milestones lm
+        join learning_plans lp on lp.id = lm.learning_plan_id
+        join workspace_members m on m.workspace_id = lp.workspace_id
+        where lm.id = $1 and m.user_id = $2
+        limit 1
+      `,
+      values: [milestoneId, userId]
+    };
+  },
+  setCompleted(milestoneId: string, isCompleted: boolean): SqlQuery {
+    return {
+      text: `
+        update learning_plan_milestones
+        set completed_at = case when $2 then now() else null end
+        where id = $1
+        returning id, learning_plan_id, title, due_date, completed_at
+      `,
+      values: [milestoneId, isCompleted]
+    };
+  }
+};
+
 export const resourceQueries = {
   insert(workspaceId: string, title: string, url: string | null): SqlQuery {
     return {
