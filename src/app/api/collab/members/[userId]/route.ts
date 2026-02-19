@@ -1,13 +1,29 @@
 import { NextResponse } from "next/server";
 
 import { readSession } from "@/lib/auth/session";
-import { executeQuery, progressQueries, workspaceQueries } from "@/lib/db";
+import { collabAuditQueries, executeQuery, progressQueries, workspaceQueries } from "@/lib/db";
 
 type Role = "owner" | "editor" | "viewer";
 const MUTABLE_ROLES: Role[] = ["editor", "viewer"];
 
 interface MemberPatchBody {
   role?: Role;
+}
+
+interface PendingInviteRecord extends Record<string, unknown> {
+  id: string;
+  workspace_id: string;
+  invited_email: string;
+  role: "editor" | "viewer";
+  token: string;
+  invited_by_user_id: string;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_by_user_id: string | null;
+  revoked_at: string | null;
+  revoked_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const canManageMembers = (ownerUserId: string, userId: string) => ownerUserId === userId;
@@ -51,10 +67,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Role must be editor or viewer" }, { status: 400 });
   }
 
-  const memberResult = await executeQuery<{ user_id: string }>(
-    workspaceQueries.findMember(workspace.id, userId)
+  const memberResult = await executeQuery<{ user_id: string; role: Role; email: string }>(
+    workspaceQueries.findMemberWithEmail(workspace.id, userId)
   );
-  if (!memberResult.rows[0]) {
+  const currentMember = memberResult.rows[0];
+  if (!currentMember) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
@@ -65,8 +82,22 @@ export async function PATCH(
       "collab_member_role_updated",
       JSON.stringify({
         userId,
+        email: currentMember.email,
         role: body.role
       })
+    )
+  );
+  await executeQuery(
+    collabAuditQueries.insert(
+      workspace.id,
+      "member_role_updated",
+      session.userId,
+      userId,
+      currentMember.email,
+      currentMember.role,
+      body.role,
+      null,
+      JSON.stringify({ source: "member_patch" })
     )
   );
 
@@ -78,8 +109,11 @@ export async function PATCH(
     role: Role;
     created_at: string;
   }>(workspaceQueries.listMembers(workspace.id));
+  const invitesResult = await executeQuery<PendingInviteRecord>(
+    workspaceQueries.listPendingInvites(workspace.id)
+  );
 
-  return NextResponse.json({ members: membersResult.rows });
+  return NextResponse.json({ members: membersResult.rows, pendingInvites: invitesResult.rows });
 }
 
 export async function DELETE(
@@ -110,20 +144,42 @@ export async function DELETE(
     return NextResponse.json({ error: "Owner cannot be removed" }, { status: 400 });
   }
 
-  const memberResult = await executeQuery<{ user_id: string }>(
-    workspaceQueries.findMember(workspace.id, userId)
+  const memberResult = await executeQuery<{ user_id: string; role: Role; email: string }>(
+    workspaceQueries.findMemberWithEmail(workspace.id, userId)
   );
-  if (!memberResult.rows[0]) {
+  const currentMember = memberResult.rows[0];
+  if (!currentMember) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
   await executeQuery(workspaceQueries.removeMember(workspace.id, userId));
+  const revokedInviteRows = await executeQuery<{ id: string }>(
+    workspaceQueries.revokePendingInvitesByEmail(workspace.id, currentMember.email, session.userId)
+  );
   await executeQuery(
     progressQueries.insert(
       workspace.id,
       "collab_member_removed",
       JSON.stringify({
-        userId
+        userId,
+        email: currentMember.email,
+        role: currentMember.role,
+        revokedInviteCount: revokedInviteRows.rowCount
+      })
+    )
+  );
+  await executeQuery(
+    collabAuditQueries.insert(
+      workspace.id,
+      "member_revoked",
+      session.userId,
+      userId,
+      currentMember.email,
+      currentMember.role,
+      null,
+      null,
+      JSON.stringify({
+        revokedInviteCount: revokedInviteRows.rowCount
       })
     )
   );
@@ -136,6 +192,9 @@ export async function DELETE(
     role: Role;
     created_at: string;
   }>(workspaceQueries.listMembers(workspace.id));
+  const invitesResult = await executeQuery<PendingInviteRecord>(
+    workspaceQueries.listPendingInvites(workspace.id)
+  );
 
-  return NextResponse.json({ members: membersResult.rows });
+  return NextResponse.json({ members: membersResult.rows, pendingInvites: invitesResult.rows });
 }

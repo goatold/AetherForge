@@ -13,19 +13,43 @@ interface MemberRecord {
   created_at: string;
 }
 
+interface PendingInviteRecord {
+  id: string;
+  workspace_id: string;
+  invited_email: string;
+  role: "editor" | "viewer";
+  token: string;
+  invited_by_user_id: string;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_by_user_id: string | null;
+  revoked_at: string | null;
+  revoked_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface CollabWorkspaceProps {
   initialMembers: MemberRecord[];
+  initialPendingInvites: PendingInviteRecord[];
   canManage: boolean;
 }
 
-export function CollabWorkspace({ initialMembers, canManage }: CollabWorkspaceProps) {
+export function CollabWorkspace({
+  initialMembers,
+  initialPendingInvites,
+  canManage
+}: CollabWorkspaceProps) {
   const [isPending, startTransition] = useTransition();
   const [members, setMembers] = useState<MemberRecord[]>(initialMembers);
+  const [pendingInvites, setPendingInvites] = useState<PendingInviteRecord[]>(initialPendingInvites);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("viewer");
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const inviteMember = () => {
+    setInfoMessage(null);
     setErrorMessage(null);
     startTransition(async () => {
       const response = await fetch("/api/collab/members", {
@@ -34,18 +58,30 @@ export function CollabWorkspace({ initialMembers, canManage }: CollabWorkspacePr
         body: JSON.stringify({ email: inviteEmail, role: inviteRole })
       });
       const body = (await response.json().catch(() => null)) as
-        | { error?: string; members?: MemberRecord[] }
+        | {
+            error?: string;
+            members?: MemberRecord[];
+            pendingInvites?: PendingInviteRecord[];
+            invitedLinkPath?: string | null;
+          }
         | null;
-      if (!response.ok || !Array.isArray(body?.members)) {
+      if (!response.ok || !Array.isArray(body?.members) || !Array.isArray(body?.pendingInvites)) {
         setErrorMessage(body?.error ?? "Failed to invite member.");
         return;
       }
       setMembers(body.members);
+      setPendingInvites(body.pendingInvites);
+      if (body.invitedLinkPath) {
+        setInfoMessage(`Invite link ready: ${body.invitedLinkPath}`);
+      } else {
+        setInfoMessage("Member role updated.");
+      }
       setInviteEmail("");
     });
   };
 
   const updateMemberRole = (userId: string, role: "editor" | "viewer") => {
+    setInfoMessage(null);
     setErrorMessage(null);
     startTransition(async () => {
       const response = await fetch(`/api/collab/members/${userId}`, {
@@ -54,31 +90,70 @@ export function CollabWorkspace({ initialMembers, canManage }: CollabWorkspacePr
         body: JSON.stringify({ role })
       });
       const body = (await response.json().catch(() => null)) as
-        | { error?: string; members?: MemberRecord[] }
+        | { error?: string; members?: MemberRecord[]; pendingInvites?: PendingInviteRecord[] }
         | null;
       if (!response.ok || !Array.isArray(body?.members)) {
         setErrorMessage(body?.error ?? "Failed to update member role.");
         return;
       }
       setMembers(body.members);
+      if (Array.isArray(body.pendingInvites)) {
+        setPendingInvites(body.pendingInvites);
+      }
+      setInfoMessage("Member role updated.");
     });
   };
 
   const removeMember = (userId: string) => {
+    setInfoMessage(null);
     setErrorMessage(null);
     startTransition(async () => {
       const response = await fetch(`/api/collab/members/${userId}`, {
         method: "DELETE"
       });
       const body = (await response.json().catch(() => null)) as
-        | { error?: string; members?: MemberRecord[] }
+        | { error?: string; members?: MemberRecord[]; pendingInvites?: PendingInviteRecord[] }
         | null;
       if (!response.ok || !Array.isArray(body?.members)) {
         setErrorMessage(body?.error ?? "Failed to remove member.");
         return;
       }
       setMembers(body.members);
+      if (Array.isArray(body.pendingInvites)) {
+        setPendingInvites(body.pendingInvites);
+      }
+      setInfoMessage("Member revoked.");
     });
+  };
+
+  const revokeInvite = (inviteId: string) => {
+    setInfoMessage(null);
+    setErrorMessage(null);
+    startTransition(async () => {
+      const response = await fetch(`/api/collab/invites/${inviteId}`, {
+        method: "DELETE"
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { error?: string; pendingInvites?: PendingInviteRecord[] }
+        | null;
+      if (!response.ok || !Array.isArray(body?.pendingInvites)) {
+        setErrorMessage(body?.error ?? "Failed to revoke invite.");
+        return;
+      }
+      setPendingInvites(body.pendingInvites);
+      setInfoMessage("Invite revoked.");
+    });
+  };
+
+  const copyInviteLink = async (token: string) => {
+    const link = `${window.location.origin}/invite/${token}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setInfoMessage("Invite link copied.");
+      setErrorMessage(null);
+    } catch {
+      setErrorMessage("Unable to copy invite link.");
+    }
   };
 
   return (
@@ -107,6 +182,7 @@ export function CollabWorkspace({ initialMembers, canManage }: CollabWorkspacePr
             </button>
           </div>
         )}
+        {infoMessage ? <p>{infoMessage}</p> : null}
         {errorMessage ? <p role="alert">{errorMessage}</p> : null}
       </section>
 
@@ -144,6 +220,44 @@ export function CollabWorkspace({ initialMembers, canManage }: CollabWorkspacePr
                       onClick={() => removeMember(member.user_id)}
                     >
                       Revoke
+                    </button>
+                  </>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="panel">
+        <h3>Pending invites</h3>
+        {pendingInvites.length === 0 ? (
+          <p>No active invites.</p>
+        ) : (
+          <ul>
+            {pendingInvites.map((invite) => (
+              <li key={invite.id}>
+                {invite.invited_email} ({invite.role}) expires{" "}
+                {new Date(invite.expires_at).toLocaleDateString()}
+                {" - "}
+                <button
+                  className="button subtle-button"
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => copyInviteLink(invite.token)}
+                >
+                  Copy invite link
+                </button>
+                {canManage ? (
+                  <>
+                    {" / "}
+                    <button
+                      className="button subtle-button"
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => revokeInvite(invite.id)}
+                    >
+                      Revoke invite
                     </button>
                   </>
                 ) : null}

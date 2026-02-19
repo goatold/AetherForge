@@ -17,6 +17,12 @@ export const userQueries = {
       `,
       values: [email, displayName]
     };
+  },
+  findById(userId: string): SqlQuery {
+    return {
+      text: "select id, email, display_name, created_at from users where id = $1 limit 1",
+      values: [userId]
+    };
   }
 };
 
@@ -85,6 +91,319 @@ export const workspaceQueries = {
         limit 1
       `,
       values: [workspaceId, userId]
+    };
+  },
+  findMemberWithEmail(workspaceId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select m.workspace_id, m.user_id, m.role, m.created_at, u.email
+        from workspace_members m
+        join users u on u.id = m.user_id
+        where m.workspace_id = $1 and m.user_id = $2
+        limit 1
+      `,
+      values: [workspaceId, userId]
+    };
+  },
+  listPendingInvites(workspaceId: string): SqlQuery {
+    return {
+      text: `
+        select
+          i.id,
+          i.workspace_id,
+          i.invited_email,
+          i.role,
+          i.token,
+          i.invited_by_user_id,
+          i.expires_at,
+          i.accepted_at,
+          i.accepted_by_user_id,
+          i.revoked_at,
+          i.revoked_by_user_id,
+          i.created_at,
+          i.updated_at
+        from workspace_member_invites i
+        where
+          i.workspace_id = $1
+          and i.accepted_at is null
+          and i.revoked_at is null
+          and i.expires_at > now()
+        order by i.created_at desc
+      `,
+      values: [workspaceId]
+    };
+  },
+  findActiveInviteByEmail(workspaceId: string, email: string): SqlQuery {
+    return {
+      text: `
+        select
+          i.id,
+          i.workspace_id,
+          i.invited_email,
+          i.role,
+          i.token,
+          i.invited_by_user_id,
+          i.expires_at,
+          i.accepted_at,
+          i.accepted_by_user_id,
+          i.revoked_at,
+          i.revoked_by_user_id,
+          i.created_at,
+          i.updated_at
+        from workspace_member_invites i
+        where
+          i.workspace_id = $1
+          and lower(i.invited_email) = lower($2)
+          and i.accepted_at is null
+          and i.revoked_at is null
+          and i.expires_at > now()
+        order by i.created_at desc
+        limit 1
+      `,
+      values: [workspaceId, email]
+    };
+  },
+  createInvite(
+    workspaceId: string,
+    invitedEmail: string,
+    role: "editor" | "viewer",
+    token: string,
+    invitedByUserId: string,
+    expiresAtIso: string
+  ): SqlQuery {
+    return {
+      text: `
+        insert into workspace_member_invites (
+          workspace_id,
+          invited_email,
+          role,
+          token,
+          invited_by_user_id,
+          expires_at
+        )
+        values ($1, $2, $3, $4, $5, $6::timestamptz)
+        returning
+          id,
+          workspace_id,
+          invited_email,
+          role,
+          token,
+          invited_by_user_id,
+          expires_at,
+          accepted_at,
+          accepted_by_user_id,
+          revoked_at,
+          revoked_by_user_id,
+          created_at,
+          updated_at
+      `,
+      values: [workspaceId, invitedEmail, role, token, invitedByUserId, expiresAtIso]
+    };
+  },
+  refreshInvite(inviteId: string, role: "editor" | "viewer", token: string, expiresAtIso: string): SqlQuery {
+    return {
+      text: `
+        update workspace_member_invites
+        set
+          role = $2,
+          token = $3,
+          expires_at = $4::timestamptz,
+          updated_at = now()
+        where id = $1
+        returning
+          id,
+          workspace_id,
+          invited_email,
+          role,
+          token,
+          invited_by_user_id,
+          expires_at,
+          accepted_at,
+          accepted_by_user_id,
+          revoked_at,
+          revoked_by_user_id,
+          created_at,
+          updated_at
+      `,
+      values: [inviteId, role, token, expiresAtIso]
+    };
+  },
+  findInviteByToken(token: string): SqlQuery {
+    return {
+      text: `
+        select
+          i.id,
+          i.workspace_id,
+          i.invited_email,
+          i.role,
+          i.token,
+          i.invited_by_user_id,
+          i.expires_at,
+          i.accepted_at,
+          i.accepted_by_user_id,
+          i.revoked_at,
+          i.revoked_by_user_id,
+          i.created_at,
+          i.updated_at,
+          w.topic as workspace_topic
+        from workspace_member_invites i
+        join workspaces w on w.id = i.workspace_id
+        where i.token = $1
+        limit 1
+      `,
+      values: [token]
+    };
+  },
+  acceptInvite(inviteId: string, acceptedByUserId: string): SqlQuery {
+    return {
+      text: `
+        update workspace_member_invites
+        set
+          accepted_at = now(),
+          accepted_by_user_id = $2,
+          updated_at = now()
+        where
+          id = $1
+          and accepted_at is null
+          and revoked_at is null
+          and expires_at > now()
+        returning
+          id,
+          workspace_id,
+          invited_email,
+          role,
+          token,
+          invited_by_user_id,
+          expires_at,
+          accepted_at,
+          accepted_by_user_id,
+          revoked_at,
+          revoked_by_user_id,
+          created_at,
+          updated_at
+      `,
+      values: [inviteId, acceptedByUserId]
+    };
+  },
+  findActiveInviteById(workspaceId: string, inviteId: string): SqlQuery {
+    return {
+      text: `
+        select
+          i.id,
+          i.workspace_id,
+          i.invited_email,
+          i.role,
+          i.token,
+          i.invited_by_user_id,
+          i.expires_at,
+          i.accepted_at,
+          i.accepted_by_user_id,
+          i.revoked_at,
+          i.revoked_by_user_id,
+          i.created_at,
+          i.updated_at
+        from workspace_member_invites i
+        where
+          i.workspace_id = $1
+          and i.id = $2
+          and i.accepted_at is null
+          and i.revoked_at is null
+          and i.expires_at > now()
+        limit 1
+      `,
+      values: [workspaceId, inviteId]
+    };
+  },
+  revokeInvite(inviteId: string, revokedByUserId: string): SqlQuery {
+    return {
+      text: `
+        update workspace_member_invites
+        set
+          revoked_at = now(),
+          revoked_by_user_id = $2,
+          updated_at = now()
+        where
+          id = $1
+          and accepted_at is null
+          and revoked_at is null
+          and expires_at > now()
+        returning
+          id,
+          workspace_id,
+          invited_email,
+          role,
+          token,
+          invited_by_user_id,
+          expires_at,
+          accepted_at,
+          accepted_by_user_id,
+          revoked_at,
+          revoked_by_user_id,
+          created_at,
+          updated_at
+      `,
+      values: [inviteId, revokedByUserId]
+    };
+  },
+  revokePendingInvitesByEmail(workspaceId: string, email: string, revokedByUserId: string): SqlQuery {
+    return {
+      text: `
+        update workspace_member_invites
+        set
+          revoked_at = now(),
+          revoked_by_user_id = $3,
+          updated_at = now()
+        where
+          workspace_id = $1
+          and lower(invited_email) = lower($2)
+          and accepted_at is null
+          and revoked_at is null
+        returning id
+      `,
+      values: [workspaceId, email, revokedByUserId]
+    };
+  }
+};
+
+export const collabAuditQueries = {
+  insert(
+    workspaceId: string,
+    action: "invite_created" | "invite_revoked" | "invite_accepted" | "member_role_updated" | "member_revoked",
+    actorUserId: string,
+    targetUserId: string | null,
+    targetEmail: string | null,
+    previousRole: "owner" | "editor" | "viewer" | null,
+    newRole: "owner" | "editor" | "viewer" | null,
+    inviteId: string | null,
+    metadataJson: string
+  ): SqlQuery {
+    return {
+      text: `
+        insert into collab_member_audit_events (
+          workspace_id,
+          action,
+          actor_user_id,
+          target_user_id,
+          target_email,
+          previous_role,
+          new_role,
+          invite_id,
+          metadata_json
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+        returning id, workspace_id, action, actor_user_id, target_user_id, target_email, previous_role, new_role, invite_id, metadata_json, created_at
+      `,
+      values: [
+        workspaceId,
+        action,
+        actorUserId,
+        targetUserId,
+        targetEmail,
+        previousRole,
+        newRole,
+        inviteId,
+        metadataJson
+      ]
     };
   }
 };
