@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "bash scripts/db/migrate.sh",
-    "db:seed": "bash scripts/db/seed.sh"
+    "db:seed": "bash scripts/db/seed.sh",
+    "test:smoke:pre-phase3": "python3 scripts/tests/pre_phase3_smoke.py"
   },
   "dependencies": {
     "next": "^15.1.0",

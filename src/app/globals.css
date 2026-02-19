@@ -174,3 +174,34 @@ ul {
   color: #a5b4fc;
   font-weight: 700;
 }
+
+.quiz-attempt-form {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.quiz-question {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+
+.quiz-question legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+
+.quiz-question textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(2, 6, 23, 0.55);
+  color: inherit;
+}
+
+.quiz-option-list {
+  display: grid;
+  gap: 0.45rem;
+}

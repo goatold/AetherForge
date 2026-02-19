@@ -119,25 +119,251 @@ export const conceptQueries = {
 };
 
 export const quizQueries = {
-  insert(workspaceId: string, title: string): SqlQuery {
+  insert(
+    workspaceId: string,
+    title: string,
+    artifactId: string | null,
+    provider: string,
+    model: string
+  ): SqlQuery {
     return {
       text: `
-        insert into quizzes (workspace_id, title)
-        values ($1, $2)
-        returning id, workspace_id, title, created_at
+        insert into quizzes (workspace_id, title, artifact_id, provider, model)
+        values ($1, $2, $3, $4, $5)
+        returning id, workspace_id, title, artifact_id, provider, model, created_at
       `,
-      values: [workspaceId, title]
+      values: [workspaceId, title, artifactId, provider, model]
+    };
+  },
+  findByIdForUser(quizId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select q.id, q.workspace_id, q.title, q.artifact_id, q.provider, q.model, q.created_at
+        from quizzes q
+        join workspace_members m on m.workspace_id = q.workspace_id
+        where q.id = $1 and m.user_id = $2
+        limit 1
+      `,
+      values: [quizId, userId]
     };
   },
   listByWorkspace(workspaceId: string): SqlQuery {
     return {
       text: `
-        select id, workspace_id, title, created_at
+        select id, workspace_id, title, artifact_id, provider, model, created_at
         from quizzes
         where workspace_id = $1
         order by created_at desc
       `,
       values: [workspaceId]
+    };
+  },
+  listByWorkspaceForUser(userId: string, limit: number): SqlQuery {
+    return {
+      text: `
+        select q.id, q.workspace_id, q.title, q.artifact_id, q.provider, q.model, q.created_at
+        from quizzes q
+        join workspace_members m on m.workspace_id = q.workspace_id
+        where m.user_id = $1
+        order by q.created_at desc
+        limit $2
+      `,
+      values: [userId, limit]
+    };
+  }
+};
+
+export const quizQuestionQueries = {
+  insert(
+    quizId: string,
+    conceptId: string | null,
+    questionType: "mcq" | "true_false" | "short_answer",
+    prompt: string,
+    explanation: string,
+    correctAnswerText: string,
+    position: number
+  ): SqlQuery {
+    return {
+      text: `
+        insert into quiz_questions (
+          quiz_id,
+          concept_id,
+          question_type,
+          prompt,
+          explanation,
+          correct_answer_text,
+          position
+        )
+        values ($1, $2, $3, $4, $5, $6, $7)
+        returning id, quiz_id, concept_id, question_type, prompt, explanation, correct_answer_text, position, created_at
+      `,
+      values: [quizId, conceptId, questionType, prompt, explanation, correctAnswerText, position]
+    };
+  },
+  listByQuiz(quizId: string): SqlQuery {
+    return {
+      text: `
+        select id, quiz_id, concept_id, question_type, prompt, explanation, correct_answer_text, position, created_at
+        from quiz_questions
+        where quiz_id = $1
+        order by position asc
+      `,
+      values: [quizId]
+    };
+  }
+};
+
+export const quizQuestionOptionQueries = {
+  insert(
+    quizQuestionId: string,
+    optionKey: string,
+    optionText: string,
+    isCorrect: boolean,
+    position: number
+  ): SqlQuery {
+    return {
+      text: `
+        insert into quiz_question_options (
+          quiz_question_id,
+          option_key,
+          option_text,
+          is_correct,
+          position
+        )
+        values ($1, $2, $3, $4, $5)
+        returning id, quiz_question_id, option_key, option_text, is_correct, position, created_at
+      `,
+      values: [quizQuestionId, optionKey, optionText, isCorrect, position]
+    };
+  },
+  listByQuiz(quizId: string): SqlQuery {
+    return {
+      text: `
+        select o.id, o.quiz_question_id, o.option_key, o.option_text, o.is_correct, o.position, o.created_at
+        from quiz_question_options o
+        join quiz_questions q on q.id = o.quiz_question_id
+        where q.quiz_id = $1
+        order by q.position asc, o.position asc
+      `,
+      values: [quizId]
+    };
+  }
+};
+
+export const quizAttemptQueries = {
+  start(quizId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        insert into quiz_attempts (quiz_id, user_id, status, started_at)
+        values ($1, $2, 'in_progress', now())
+        returning id, quiz_id, user_id, status, score_percent, correct_count, total_questions, started_at, submitted_at, created_at
+      `,
+      values: [quizId, userId]
+    };
+  },
+  submit(
+    attemptId: string,
+    scorePercent: number,
+    correctCount: number,
+    totalQuestions: number
+  ): SqlQuery {
+    return {
+      text: `
+        update quiz_attempts
+        set
+          status = 'submitted',
+          score_percent = $2,
+          correct_count = $3,
+          total_questions = $4,
+          submitted_at = now()
+        where id = $1
+        returning id, quiz_id, user_id, status, score_percent, correct_count, total_questions, started_at, submitted_at, created_at
+      `,
+      values: [attemptId, scorePercent, correctCount, totalQuestions]
+    };
+  },
+  findByIdForUser(attemptId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select a.id, a.quiz_id, a.user_id, a.status, a.score_percent, a.correct_count, a.total_questions, a.started_at, a.submitted_at, a.created_at
+        from quiz_attempts a
+        join quizzes q on q.id = a.quiz_id
+        join workspace_members m on m.workspace_id = q.workspace_id
+        where a.id = $1 and a.user_id = $2 and m.user_id = $2
+        limit 1
+      `,
+      values: [attemptId, userId]
+    };
+  },
+  listRecentByWorkspace(workspaceId: string, limit: number): SqlQuery {
+    return {
+      text: `
+        select a.id, a.quiz_id, a.user_id, a.status, a.score_percent, a.correct_count, a.total_questions, a.started_at, a.submitted_at, a.created_at
+        from quiz_attempts a
+        join quizzes q on q.id = a.quiz_id
+        where q.workspace_id = $1 and a.status = 'submitted'
+        order by a.submitted_at desc nulls last
+        limit $2
+      `,
+      values: [workspaceId, limit]
+    };
+  },
+  listRecentByWorkspaceSince(workspaceId: string, limit: number, sinceDays: number): SqlQuery {
+    return {
+      text: `
+        select a.id, a.quiz_id, a.user_id, a.status, a.score_percent, a.correct_count, a.total_questions, a.started_at, a.submitted_at, a.created_at
+        from quiz_attempts a
+        join quizzes q on q.id = a.quiz_id
+        where
+          q.workspace_id = $1
+          and a.status = 'submitted'
+          and a.submitted_at is not null
+          and a.submitted_at >= now() - ($3 * interval '1 day')
+        order by a.submitted_at desc
+        limit $2
+      `,
+      values: [workspaceId, limit, sinceDays]
+    };
+  }
+};
+
+export const quizAttemptAnswerQueries = {
+  upsert(
+    quizAttemptId: string,
+    quizQuestionId: string,
+    selectedOptionId: string | null,
+    answerText: string | null,
+    isCorrect: boolean
+  ): SqlQuery {
+    return {
+      text: `
+        insert into quiz_attempt_answers (
+          quiz_attempt_id,
+          quiz_question_id,
+          selected_option_id,
+          answer_text,
+          is_correct
+        )
+        values ($1, $2, $3, $4, $5)
+        on conflict (quiz_attempt_id, quiz_question_id)
+        do update set
+          selected_option_id = excluded.selected_option_id,
+          answer_text = excluded.answer_text,
+          is_correct = excluded.is_correct,
+          updated_at = now()
+        returning id, quiz_attempt_id, quiz_question_id, selected_option_id, answer_text, is_correct, created_at, updated_at
+      `,
+      values: [quizAttemptId, quizQuestionId, selectedOptionId, answerText, isCorrect]
+    };
+  },
+  listByAttempt(quizAttemptId: string): SqlQuery {
+    return {
+      text: `
+        select id, quiz_attempt_id, quiz_question_id, selected_option_id, answer_text, is_correct, created_at, updated_at
+        from quiz_attempt_answers
+        where quiz_attempt_id = $1
+      `,
+      values: [quizAttemptId]
     };
   }
 };

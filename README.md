@@ -11,6 +11,13 @@ AetherForge is an AI-powered learning app focused on helping users learn a chose
 3. Open:
    - `http://localhost:3000`
 
+## Smoke Regression
+
+- Pre-Phase-3 baseline smoke test:
+  - `npm run test:smoke:pre-phase3`
+- Optional target URL:
+  - `python3 scripts/tests/pre_phase3_smoke.py --base-url http://localhost:3002`
+
 ## Initial Scope
 
 - Single-topic MVP with selectable difficulty
