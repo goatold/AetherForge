@@ -26,6 +26,11 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
   const [queryDraft, setQueryDraft] = useState("");
   const [tagFilterDraft, setTagFilterDraft] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [editTitleDraft, setEditTitleDraft] = useState("");
+  const [editUrlDraft, setEditUrlDraft] = useState("");
+  const [editNoteDraft, setEditNoteDraft] = useState("");
+  const [editTagsDraft, setEditTagsDraft] = useState("");
   const tagCounts = resources.reduce((map, resource) => {
     resource.tags.forEach((tag) => {
       map.set(tag, (map.get(tag) ?? 0) + 1);
@@ -88,6 +93,72 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
     setErrorMessage(null);
     startTransition(async () => {
       await refreshResources(queryDraft, tagFilterDraft);
+    });
+  };
+
+  const beginResourceEdit = (resource: ResourceRecord) => {
+    setEditingResourceId(resource.id);
+    setEditTitleDraft(resource.title);
+    setEditUrlDraft(resource.url ?? "");
+    setEditNoteDraft(resource.note_text ?? "");
+    setEditTagsDraft(resource.tags.join(", "));
+  };
+
+  const saveResourceEdit = () => {
+    if (!editingResourceId) {
+      return;
+    }
+    setErrorMessage(null);
+    startTransition(async () => {
+      const response = await fetch(`/api/resources/${editingResourceId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: editTitleDraft,
+          url: editUrlDraft || null,
+          noteText: editNoteDraft || null,
+          tags: editTagsDraft
+        })
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { error?: string; resource?: ResourceRecord | null }
+        | null;
+      if (!response.ok || !body?.resource) {
+        setErrorMessage(body?.error ?? "Failed to update resource.");
+        return;
+      }
+      setResources((previous) =>
+        previous.map((item) => (item.id === editingResourceId ? body.resource! : item))
+      );
+      setEditingResourceId(null);
+      setEditTitleDraft("");
+      setEditUrlDraft("");
+      setEditNoteDraft("");
+      setEditTagsDraft("");
+    });
+  };
+
+  const deleteResource = (resourceId: string) => {
+    setErrorMessage(null);
+    startTransition(async () => {
+      const response = await fetch(`/api/resources/${resourceId}`, {
+        method: "DELETE"
+      });
+      const body = (await response.json().catch(() => null)) as
+        | { error?: string; deleted?: boolean }
+        | null;
+      if (!response.ok || body?.deleted !== true) {
+        setErrorMessage(body?.error ?? "Failed to delete resource.");
+        return;
+      }
+      setResources((previous) => previous.filter((item) => item.id !== resourceId));
+      if (editingResourceId === resourceId) {
+        setEditingResourceId(null);
+        setEditTitleDraft("");
+        setEditUrlDraft("");
+        setEditNoteDraft("");
+        setEditTagsDraft("");
+      }
     });
   };
 
@@ -178,6 +249,64 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
                 ({new Date(resource.created_at).toLocaleDateString()})
                 {resource.tags.length > 0 ? ` - tags: ${resource.tags.join(", ")}` : ""}
                 {resource.note_text ? ` - note: ${resource.note_text}` : ""}
+                {" - "}
+                <button
+                  className="button subtle-button"
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => beginResourceEdit(resource)}
+                >
+                  Edit
+                </button>
+                {" / "}
+                <button
+                  className="button subtle-button"
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => deleteResource(resource.id)}
+                >
+                  Delete
+                </button>
+                {editingResourceId === resource.id ? (
+                  <div className="row" style={{ marginTop: "0.5rem" }}>
+                    <input
+                      value={editTitleDraft}
+                      onChange={(event) => setEditTitleDraft(event.target.value)}
+                      placeholder="Resource title"
+                    />
+                    <input
+                      value={editUrlDraft}
+                      onChange={(event) => setEditUrlDraft(event.target.value)}
+                      placeholder="https://example.com"
+                    />
+                    <input
+                      value={editTagsDraft}
+                      onChange={(event) => setEditTagsDraft(event.target.value)}
+                      placeholder="tag1, tag2"
+                    />
+                    <input
+                      value={editNoteDraft}
+                      onChange={(event) => setEditNoteDraft(event.target.value)}
+                      placeholder="note"
+                    />
+                    <button
+                      className="button subtle-button"
+                      type="button"
+                      disabled={isPending}
+                      onClick={saveResourceEdit}
+                    >
+                      Save
+                    </button>
+                    <button
+                      className="button subtle-button"
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => setEditingResourceId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

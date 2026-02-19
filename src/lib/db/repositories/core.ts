@@ -665,6 +665,29 @@ export const planMilestoneQueries = {
       `,
       values: [milestoneId, isCompleted]
     };
+  },
+  updateDetails(milestoneId: string, title: string, dueDate: string | null): SqlQuery {
+    return {
+      text: `
+        update learning_plan_milestones
+        set
+          title = $2,
+          due_date = $3::date
+        where id = $1
+        returning id, learning_plan_id, title, due_date, completed_at
+      `,
+      values: [milestoneId, title, dueDate]
+    };
+  },
+  removeById(milestoneId: string): SqlQuery {
+    return {
+      text: `
+        delete from learning_plan_milestones
+        where id = $1
+        returning id, learning_plan_id, title, due_date, completed_at
+      `,
+      values: [milestoneId]
+    };
   }
 };
 
@@ -716,6 +739,49 @@ export const resourceQueries = {
         order by created_at desc
       `,
       values: [workspaceId, searchTerm, tag]
+    };
+  },
+  findByIdForUser(resourceId: string, userId: string): SqlQuery {
+    return {
+      text: `
+        select r.id, r.workspace_id, r.title, r.url, r.note_text, r.tags, r.created_at
+        from resources r
+        join workspace_members m on m.workspace_id = r.workspace_id
+        where r.id = $1 and m.user_id = $2
+        limit 1
+      `,
+      values: [resourceId, userId]
+    };
+  },
+  updateById(
+    resourceId: string,
+    title: string,
+    url: string | null,
+    noteText: string | null,
+    tags: string[]
+  ): SqlQuery {
+    return {
+      text: `
+        update resources
+        set
+          title = $2,
+          url = $3,
+          note_text = $4,
+          tags = $5::text[]
+        where id = $1
+        returning id, workspace_id, title, url, note_text, tags, created_at
+      `,
+      values: [resourceId, title, url, noteText, tags]
+    };
+  },
+  removeById(resourceId: string): SqlQuery {
+    return {
+      text: `
+        delete from resources
+        where id = $1
+        returning id, workspace_id, title, url, note_text, tags, created_at
+      `,
+      values: [resourceId]
     };
   }
 };
