@@ -117,7 +117,7 @@ flowchart LR
 - Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, and collaboration workspace UI scaffold).
 - Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, and baseline reliability runbook).
 
-### Phase 0 (Week 1) - Foundation Hardening
+### Phase 0 - Foundation Hardening
 
 **Deliverables**
 
@@ -141,7 +141,7 @@ flowchart LR
 - Navigate from landing to authenticated app shell placeholder.
 - Show typed contract reuse between UI and backend layer.
 
-### Phase 1 (Week 2) - Auth and Data Foundation
+### Phase 1 - Auth and Data Foundation
 
 **Deliverables**
 
@@ -164,7 +164,7 @@ flowchart LR
 - Complete login and create initial workspace profile.
 - Verify data isolation between two test accounts.
 
-### Phase 2 (Weeks 3-4) - Concept Generation and Explorer
+### Phase 2 - Concept Generation and Explorer
 
 **Deliverables**
 
@@ -187,7 +187,7 @@ flowchart LR
 - Generate and browse concept graph in one session.
 - Reload app and view persisted concept graph and examples.
 
-### Phase 3 (Weeks 5-6) - Quiz and Feedback Loop
+### Phase 3 - Quiz and Feedback Loop
 
 **Deliverables**
 
@@ -210,7 +210,7 @@ flowchart LR
 - Run a quiz and inspect question-by-question evaluation.
 - Display trend from multiple attempts.
 
-### Phase 4 (Weeks 7-8) - Flashcards and Spaced Repetition
+### Phase 4 - Flashcards and Spaced Repetition
 
 **Deliverables**
 
@@ -233,7 +233,7 @@ flowchart LR
 - Generate flashcards from weak concepts.
 - Complete review session and show updated next-review dates.
 
-### Phase 5 (Weeks 9-10) - Plans, Progress, and Resources
+### Phase 5 - Plans, Progress, and Resources
 
 **Deliverables**
 
@@ -256,7 +256,7 @@ flowchart LR
 - Create a plan and complete one milestone-linked learning activity.
 - Add notes and retrieve them by tag.
 
-### Phase 6 (Weeks 11-12) - Export and Collaboration
+### Phase 6 - Export and Collaboration
 
 **Deliverables**
 
@@ -280,7 +280,7 @@ flowchart LR
 - Export a study packet with optional answer key.
 - Share with another account, test editor/viewer boundaries.
 
-### Phase 7 (Weeks 13-14) - Reliability and Pilot Readiness
+### Phase 7 - Reliability and Pilot Readiness
 
 **Deliverables**
 
@@ -357,13 +357,6 @@ flowchart LR
 - Security/privacy: user data isolation verified in access tests.
 - AI quality: schema-valid generation success rate meets internal threshold.
 - Usability: phase demos complete without manual DB intervention.
-
-## Team and Timeline Assumptions
-
-- Small team (2-4 engineers) with parallel frontend/backend execution.
-- AI provider credentials and infrastructure are available before Phase 2.
-- Timeline targets MVP readiness, not enterprise scale optimization.
-- If staffing is part-time, timeline should be adjusted by roughly 1.5-2x.
 
 ## Definition of Done
 
