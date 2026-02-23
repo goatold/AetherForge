@@ -21,13 +21,14 @@ Build the current AetherForge app from its existing baseline into an MVP that su
 
 Current repository state:
 
-- `src/app/layout.tsx` defines app metadata and a minimal root layout.
-- `src/app/page.tsx` renders a static landing page only.
-- `src/app/globals.css` contains global styles and Tailwind layers.
-- `package.json` includes Next.js, React, TypeScript, ESLint, and Tailwind, but no backend/data/auth integrations yet.
-- `README.md` describes the intended MVP feature set.
+- `src/app/(marketing)` and `src/app/(app)` route groups are in place with authenticated workspace navigation.
+- Session auth, protected routes, and DB-backed workspace membership flows are implemented.
+- Onboarding now supports persisted topic, difficulty, and learning goals via `GET/PATCH /api/workspace`.
+- Concept generation/artifact lineage, quiz attempt/review/compare, and flashcard SRS queue/review APIs are implemented.
+- Plan milestones, progress timeline, resources CRUD/filtering, study-packet export, collaboration invites/roles, and internal reliability endpoints are available.
+- `src/app/globals.css` provides shared workspace styling, and `package.json` includes the scripts needed for migrations, jobs, health checks, linting, and build.
 
-This means AetherForge is currently in a scaffold stage with branding and no implemented product workflows.
+This means AetherForge is now a functional MVP-in-progress with most core workflows implemented, and remaining work is focused on integration depth, quality hardening, and release readiness.
 
 ## Product Scope
 
@@ -76,13 +77,15 @@ flowchart LR
 
 ### Incremental Build Order
 
-1. UI route skeletons and shared domain types.
-2. Auth and persistence layer.
-3. AI orchestration and generation contracts.
-4. Practice loops (quiz + flashcards + scheduling).
-5. Planning/resources workflows.
-6. Export/collaboration.
-7. Reliability and release hardening.
+Build has progressed substantially; this sequence is now the delivery lineage and remaining integration-hardening order:
+
+1. Foundation route skeletons and shared domain contracts (completed).
+2. Auth and persistence layer (completed).
+3. AI orchestration and generation contracts (completed baseline).
+4. Practice loops (quiz + flashcards + scheduling) (active hardening/expansion).
+5. Planning/resources workflows (active hardening/expansion).
+6. Export/collaboration (active hardening/expansion).
+7. Reliability and release hardening (active).
 
 ## Planned Project Structure (Repository-Aligned)
 
@@ -107,8 +110,9 @@ flowchart LR
 
 ### Status Snapshot (Updated)
 
+- Overall: core MVP workflows are implemented end-to-end in baseline form; current work is focused on depth, reliability, and release readiness.
 - Phase 0: complete.
-- Phase 1: complete (auth/session guardrails, DB schema+migrations+seed pipeline, and DB-backed workspace access by signed-in user).
+- Phase 1: complete (auth/session guardrails, DB schema+migrations+seed pipeline, DB-backed workspace access by signed-in user, persisted onboarding topic/difficulty/learning goals flow, and protected app routes including export/collaboration surfaces).
 - Phase 2: complete (provider-backed concept generation path with strict validation, artifact lineage persistence, and explorer/detail + artifact graph/reload flows).
 - Phase 3: in progress (quiz generation from concepts, attempt start/submit scoring flow, concept-linked weak-area feedback, attempt trend visibility with timeframe query support, deep-linkable question-by-question review pages, attempt comparison analytics across workspace and per-attempt views, and targeted retry quiz generation from weak concepts).
 - Phase 4: in progress (flashcard generation from quiz misses, SM-2-style scheduler utility, due-queue API, review scoring endpoint, flashcards workspace UI replacing placeholder page, an internal idempotent queue-refresh job endpoint for scheduled top-ups, and a cron-friendly job runner script).
@@ -117,7 +121,7 @@ flowchart LR
 - Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, and collaboration workspace UI scaffold).
 - Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, and baseline reliability runbook).
 
-### Phase 0 - Foundation Hardening
+### Phase 0 - Foundation Establishment (Completed)
 
 **Deliverables**
 
@@ -141,7 +145,7 @@ flowchart LR
 - Navigate from landing to authenticated app shell placeholder.
 - Show typed contract reuse between UI and backend layer.
 
-### Phase 1 - Auth and Data Foundation
+### Phase 1 - Auth and Data Foundation (Completed)
 
 **Deliverables**
 
@@ -164,7 +168,7 @@ flowchart LR
 - Complete login and create initial workspace profile.
 - Verify data isolation between two test accounts.
 
-### Phase 2 - Concept Generation and Explorer
+### Phase 2 - Concept Generation and Explorer (Completed Baseline)
 
 **Deliverables**
 
@@ -187,7 +191,7 @@ flowchart LR
 - Generate and browse concept graph in one session.
 - Reload app and view persisted concept graph and examples.
 
-### Phase 3 - Quiz and Feedback Loop
+### Phase 3 - Quiz and Feedback Loop (In Progress: Hardening and Expansion)
 
 **Deliverables**
 
@@ -210,7 +214,7 @@ flowchart LR
 - Run a quiz and inspect question-by-question evaluation.
 - Display trend from multiple attempts.
 
-### Phase 4 - Flashcards and Spaced Repetition
+### Phase 4 - Flashcards and Spaced Repetition (In Progress: Hardening and Expansion)
 
 **Deliverables**
 
@@ -233,7 +237,7 @@ flowchart LR
 - Generate flashcards from weak concepts.
 - Complete review session and show updated next-review dates.
 
-### Phase 5 - Plans, Progress, and Resources
+### Phase 5 - Plans, Progress, and Resources (In Progress: Hardening and Expansion)
 
 **Deliverables**
 
@@ -256,7 +260,7 @@ flowchart LR
 - Create a plan and complete one milestone-linked learning activity.
 - Add notes and retrieve them by tag.
 
-### Phase 6 - Export and Collaboration
+### Phase 6 - Export and Collaboration (In Progress: Hardening and Expansion)
 
 **Deliverables**
 
@@ -280,7 +284,7 @@ flowchart LR
 - Export a study packet with optional answer key.
 - Share with another account, test editor/viewer boundaries.
 
-### Phase 7 - Reliability and Pilot Readiness
+### Phase 7 - Reliability and Pilot Readiness (In Progress)
 
 **Deliverables**
 

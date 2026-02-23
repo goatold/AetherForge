@@ -37,6 +37,19 @@ export const workspaceQueries = {
       values: [ownerUserId, topic, difficulty]
     };
   },
+  updateBasics(workspaceId: string, topic: string, difficulty: string): SqlQuery {
+    return {
+      text: `
+        update workspaces
+        set
+          topic = $2,
+          difficulty = $3
+        where id = $1
+        returning id, owner_user_id, topic, difficulty, created_at
+      `,
+      values: [workspaceId, topic, difficulty]
+    };
+  },
   listForUser(userId: string): SqlQuery {
     return {
       text: `
@@ -361,6 +374,53 @@ export const workspaceQueries = {
         returning id
       `,
       values: [workspaceId, email, revokedByUserId]
+    };
+  }
+};
+
+export const workspaceGoalQueries = {
+  listByWorkspace(workspaceId: string): SqlQuery {
+    return {
+      text: `
+        select id, workspace_id, label, position, created_at
+        from workspace_learning_goals
+        where workspace_id = $1
+        order by position asc, created_at asc
+      `,
+      values: [workspaceId]
+    };
+  },
+  clearByWorkspace(workspaceId: string): SqlQuery {
+    return {
+      text: `
+        delete from workspace_learning_goals
+        where workspace_id = $1
+      `,
+      values: [workspaceId]
+    };
+  },
+  replaceByWorkspace(workspaceId: string, labels: string[]): SqlQuery {
+    return {
+      text: `
+        with deleted as (
+          delete from workspace_learning_goals
+          where workspace_id = $1
+        )
+        insert into workspace_learning_goals (workspace_id, label, position)
+        select $1, goals.label, goals.position::int
+        from unnest($2::text[]) with ordinality as goals(label, position)
+      `,
+      values: [workspaceId, labels]
+    };
+  },
+  insert(workspaceId: string, label: string, position: number): SqlQuery {
+    return {
+      text: `
+        insert into workspace_learning_goals (workspace_id, label, position)
+        values ($1, $2, $3)
+        returning id, workspace_id, label, position, created_at
+      `,
+      values: [workspaceId, label, position]
     };
   }
 };

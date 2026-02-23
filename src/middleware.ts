@@ -9,7 +9,9 @@ const PROTECTED_ROUTES = [
   "/quiz",
   "/flashcards",
   "/plan",
-  "/resources"
+  "/resources",
+  "/export",
+  "/collab"
 ] as const;
 
 const isProtectedRoute = (pathname: string) =>
@@ -37,5 +39,15 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/onboarding/:path*", "/learn/:path*", "/quiz/:path*", "/flashcards/:path*", "/plan/:path*", "/resources/:path*", "/sign-in"]
+  matcher: [
+    "/onboarding/:path*",
+    "/learn/:path*",
+    "/quiz/:path*",
+    "/flashcards/:path*",
+    "/plan/:path*",
+    "/resources/:path*",
+    "/export/:path*",
+    "/collab/:path*",
+    "/sign-in"
+  ]
 };
