@@ -206,6 +206,36 @@ def run(base_url: str):
         )
     )
 
+    trailing_slash_url_status, trailing_slash_url_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "chatgpt-web",
+            "mode": "browser_ui",
+            "modelHint": "trailing-slash-login-url-test",
+            "loginUrl": "https://chatgpt.com/",
+        },
+    )
+    trailing_slash_url_obj = parse_json(trailing_slash_url_body)
+    trailing_slash_url_error = (
+        trailing_slash_url_obj.get("error") if isinstance(trailing_slash_url_obj, dict) else None
+    )
+    checks.append(
+        CheckResult(
+            "provider_login_url_trailing_slash_rejected",
+            trailing_slash_url_status == 400,
+            f"status={trailing_slash_url_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "provider_login_url_trailing_slash_message",
+            isinstance(trailing_slash_url_error, str) and "canonical login url" in trailing_slash_url_error.lower(),
+            str(trailing_slash_url_error),
+        )
+    )
+
     oversized_model_hint_status, oversized_model_hint_body = request_json(
         opener,
         "POST",

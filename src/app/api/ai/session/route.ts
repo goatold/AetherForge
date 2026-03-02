@@ -51,13 +51,11 @@ const isAllowedLoginUrl = (providerKey: string, loginUrl: string | null): boolea
   }
   try {
     const parsedLoginUrl = new URL(loginUrl);
-    const parsedExpectedUrl = new URL(expectedUrl);
-    const normalizedLoginUrl = `${parsedLoginUrl.protocol}//${parsedLoginUrl.host}${parsedLoginUrl.pathname.replace(/\/$/, "")}`;
-    const normalizedExpectedUrl = `${parsedExpectedUrl.protocol}//${parsedExpectedUrl.host}${parsedExpectedUrl.pathname.replace(/\/$/, "")}`;
     return (
-      normalizedLoginUrl === normalizedExpectedUrl &&
+      parsedLoginUrl.protocol === "https:" &&
       parsedLoginUrl.search.length === 0 &&
-      parsedLoginUrl.hash.length === 0
+      parsedLoginUrl.hash.length === 0 &&
+      loginUrl === expectedUrl
     );
   } catch {
     return false;

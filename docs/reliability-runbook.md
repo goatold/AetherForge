@@ -73,7 +73,7 @@ Current tracked job name:
 - Auth: signed-in app session.
 - `POST /api/ai/session` currently enforces a provider allowlist: `chatgpt-web`, `claude-web`, `gemini-web`.
 - `POST /api/ai/session` requires canonical `providerKey` formatting (no leading/trailing whitespace).
-- `POST /api/ai/session` also validates `loginUrl` against the selected provider canonical HTTPS login URL (no extra path/query/hash).
+- `POST /api/ai/session` also validates `loginUrl` as an exact canonical HTTPS provider URL string (no trailing slash, path/query/hash, or alternate host form).
 - `POST /api/ai/session` enforces a bounded `modelHint` length (`<=120` chars) to keep persisted provider metadata constrained and stable.
 - `POST /api/ai/session` enforces safe `modelHint` characters (alphanumeric plus `._:/-` and spaces) and rejects control/special characters.
 - `POST /api/ai/session` currently accepts only `mode: "browser_ui"` for MVP reliability. `oauth_api` is intentionally rejected (`400`) until the OAuth/API provider track is implemented.
