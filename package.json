@@ -19,12 +19,17 @@
     "test:smoke:collab-role-conflict": "python3 scripts/tests/collab_role_conflict_smoke.py",
     "test:smoke:collab-revoke-conflict": "python3 scripts/tests/collab_revoke_conflict_smoke.py",
     "test:smoke:phase6-hardening": "bash scripts/tests/run_phase6_hardening_smoke.sh",
+    "test:smoke:phase7-reliability": "bash scripts/tests/run_phase7_reliability_smoke.sh",
+    "test:smoke:ai-connection-required": "python3 scripts/tests/ai_connection_required_smoke.py",
+    "test:quality:ai-schema": "python3 scripts/tests/ai_quality_gate.py --min-success-rate 95 --iterations 20 --require-connected-provider",
     "test:smoke:internal-health": "python3 scripts/tests/internal_health_smoke.py",
-    "test:smoke:internal-jobs": "python3 scripts/tests/internal_jobs_smoke.py"
+    "test:smoke:internal-jobs": "python3 scripts/tests/internal_jobs_smoke.py",
+    "test:smoke:internal-jobs-overlap": "python3 scripts/tests/internal_jobs_overlap_smoke.py"
   },
   "dependencies": {
     "next": "^15.1.0",
     "pg": "^8.18.0",
+    "playwright": "^1.58.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

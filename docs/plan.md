@@ -26,7 +26,7 @@ Current repository state:
 - Onboarding now supports persisted topic, difficulty, and learning goals via `GET/PATCH /api/workspace`.
 - Concept generation/artifact lineage, quiz attempt/review/compare, and flashcard SRS queue/review APIs are implemented.
 - Plan milestones, progress timeline, resources CRUD/filtering, study-packet export, collaboration invites/roles, and internal reliability endpoints are available.
-- Reliability/security hardening now includes optimistic-concurrency protections (resources, milestones, collaboration role/revoke), least-privilege invite visibility, and dedicated smoke suites for Phase 6 and internal reliability contracts.
+- Reliability/security hardening now includes optimistic-concurrency protections (resources, milestones, collaboration role/revoke), least-privilege invite visibility, internal-job overlap guards, and dedicated smoke suites for Phase 6 and internal reliability contracts.
 - `src/app/globals.css` provides shared workspace styling, and `package.json` includes the scripts needed for migrations, jobs, health checks, linting, and build.
 
 This means AetherForge is now a functional MVP-in-progress with most core workflows implemented, and remaining work is focused on integration depth, quality hardening, and release readiness.
@@ -100,7 +100,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - `src/app/(app)/resources/` - Notes, highlights, and references.
 - `src/app/api/` - API route handlers (generation, progress, sharing, export).
 - `src/components/` - Reusable UI components.
-- `src/lib/ai/` - Prompt templates, schema validators, provider adapters.
+- `src/lib/ai/` - Schema validators, provider adapters, and manual provider-session orchestration.
 - `src/lib/db/` - DB client, query modules, migration helpers.
 - `src/lib/srs/` - Spaced-repetition scheduling logic.
 - `src/lib/export/` - Print templates and render pipeline.
@@ -120,7 +120,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Phase 5: in progress (plan title persistence, milestone create/edit/complete/delete workflow, progress snapshot widgets, progress-event timeline updates with readable labels, category filters, and pagination, resources API, and resources workspace UI replacing placeholder pages with note/tag capture, filterable search, quick tag chips, and inline edit/delete controls).
 - Phase 6: in progress (browser print-first study packet export route with section toggles, answer-key/compact options, A4/Letter page-size controls, improved print-fidelity CSS, in-app export preview workspace, optimistic concurrency guards for resource and milestone edits to prevent silent overwrite, and consolidated hardening smoke suite `test:smoke:phase6-hardening`).
 - Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, collaboration workspace UI scaffold, least-privilege hardening so non-owners cannot access pending invite links/tokens, and conflict-safe role update/revoke mutations using expected current role checks with 409 responses on stale writes).
-- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, baseline reliability runbook, observability scaffold in `src/lib/observability/`, pilot release checklist, extended MVP smoke script `test:smoke:mvp`, dedicated internal health/job auth+contract smokes (`test:smoke:internal-health`, `test:smoke:internal-jobs`), AI retry/fallback for concept and quiz generation).
+- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, baseline reliability runbook, observability scaffold in `src/lib/observability/`, pilot release checklist, extended MVP smoke script `test:smoke:mvp`, dedicated internal health/job auth+contract smokes (`test:smoke:internal-health`, `test:smoke:internal-jobs`), deterministic overlap-rejection smoke (`test:smoke:internal-jobs-overlap`) backed by internal job `running`-state uniqueness, consolidated reliability gate runner `test:smoke:phase7-reliability`, and manual browser-based AI connection gating via `/ai-connect` + `ai_provider_sessions` with dedicated smoke `test:smoke:ai-connection-required`).
 
 ### Phase 0 - Foundation Establishment (Completed)
 
@@ -290,7 +290,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 **Deliverables**
 
 - Metrics, tracing, and error monitoring hooks.
-- Retries/fallbacks for AI provider failures.
+- Manual provider-session lifecycle plus generation failure telemetry for provider-connection faults.
 - AI output quality checks and schema failure alerts.
 - Pilot release checklist and operational runbook.
 
@@ -360,7 +360,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Performance: typical page transitions under 2s in staging baseline.
 - Reliability: no critical-severity blocker in core user loop.
 - Security/privacy: user data isolation verified in access tests.
-- AI quality: schema-valid generation success rate meets internal threshold.
+- AI quality: schema-valid generation success rate meets internal threshold (95%).
 - Usability: phase demos complete without manual DB intervention.
 
 ## Definition of Done

@@ -1,177 +1,92 @@
-import { env } from "@/lib/env";
 import type { DifficultyLevel } from "@/lib/contracts/domain";
+import type { AiProviderSession } from "@/lib/ai/provider-session";
+import { logger, recordError } from "@/lib/observability";
 
 import {
-  type ConceptNodeInput,
   type GenerationPayload,
+  type ConceptNodeInput,
   generateBootstrapConceptPayload,
   validateGenerationPayload
 } from "./concepts";
+import { runChatGptWebPrompt } from "./browser/chatgpt-web";
 import { withRetries } from "./retry";
 
-interface OpenAiChatResponse {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-}
+const browserAutomationEnabled = () => process.env.AI_BROWSER_AUTOMATION === "1";
 
-const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-
-const buildSystemPrompt = () =>
+const buildBrowserPrompt = (topic: string, difficulty: DifficultyLevel) =>
   [
-    "You generate learning concept graphs as strict JSON.",
-    "Return JSON only with this exact shape:",
-    "{",
-    '  "nodes": [',
-    "    {",
-    '      "title": "string",',
-    '      "summary": "string",',
-    '      "examples": [',
-    '        { "type": "example", "title": "string", "body": "string" },',
-    '        { "type": "case_study", "title": "string", "body": "string" }',
-    "      ]",
-    "    }",
-    "  ]",
-    "}",
+    "Return JSON only.",
+    "Shape:",
+    '{ "nodes": [{ "title": "string", "summary": "string", "examples": [{ "type":"example|case_study", "title":"string", "body":"string" }] }] }',
     "Rules:",
-    "- Return 2-5 nodes.",
-    "- Each node must include at least two examples.",
-    '- Example type must be exactly "example" or "case_study".',
-    "- Keep each summary concise and actionable."
-  ].join("\n");
-
-const buildUserPrompt = (topic: string, difficulty: DifficultyLevel) =>
-  [
+    "- 2-5 nodes",
+    '- example.type must be "example" or "case_study"',
+    "- at least two examples per node",
     `Topic: ${topic}`,
-    `Difficulty: ${difficulty}`,
-    "Generate a concept graph suitable for guided learning."
+    `Difficulty: ${difficulty}`
   ].join("\n");
 
 const parseNodesFromModel = (content: string): ConceptNodeInput[] | null => {
   try {
-    const parsed = JSON.parse(content) as {
-      nodes?: ConceptNodeInput[];
-    };
-    if (!Array.isArray(parsed.nodes)) {
-      return null;
-    }
-    return parsed.nodes;
+    const parsed = JSON.parse(content) as { nodes?: ConceptNodeInput[] };
+    return Array.isArray(parsed.nodes) ? parsed.nodes : null;
   } catch {
     return null;
   }
 };
 
-async function generateFromOpenAi(
+async function generateViaBrowserDriver(
   topic: string,
-  difficulty: DifficultyLevel
+  difficulty: DifficultyLevel,
+  session: AiProviderSession
 ): Promise<GenerationPayload> {
-  const apiKey = env.openAiApiKey;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (session.providerKey !== "chatgpt-web") {
+    throw new Error(`Browser driver not yet implemented for provider: ${session.providerKey}`);
   }
-
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-  const response = await fetch(OPENAI_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: buildSystemPrompt() },
-        { role: "user", content: buildUserPrompt(topic, difficulty) }
-      ],
-      temperature: 0.2,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "concept_graph_payload",
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["nodes"],
-            properties: {
-              nodes: {
-                type: "array",
-                minItems: 2,
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: ["title", "summary", "examples"],
-                  properties: {
-                    title: { type: "string", minLength: 1 },
-                    summary: { type: "string", minLength: 1 },
-                    examples: {
-                      type: "array",
-                      minItems: 2,
-                      items: {
-                        type: "object",
-                        additionalProperties: false,
-                        required: ["type", "title", "body"],
-                        properties: {
-                          type: { type: "string", enum: ["example", "case_study"] },
-                          title: { type: "string", minLength: 1 },
-                          body: { type: "string", minLength: 1 }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI request failed with status ${response.status}`);
-  }
-
-  const body = (await response.json()) as OpenAiChatResponse;
-  const content = body.choices?.[0]?.message?.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("OpenAI response did not include JSON content");
-  }
-
-  const nodes = parseNodesFromModel(content);
+  const rawJson = await runChatGptWebPrompt(session.userId, buildBrowserPrompt(topic, difficulty));
+  const nodes = parseNodesFromModel(rawJson);
   if (!nodes) {
-    throw new Error("OpenAI response JSON could not be parsed");
+    throw new Error("Browser provider response could not be parsed as concept JSON.");
   }
-
   const payload: GenerationPayload = {
     artifactVersion: 1,
-    provider: "openai",
-    model,
+    provider: session.providerKey,
+    model: session.modelHint ?? "chatgpt-web-ui",
     nodes
   };
   const validated = validateGenerationPayload(payload);
   if (!validated) {
-    throw new Error("OpenAI response failed schema validation");
+    throw new Error("Browser provider response failed concept schema validation.");
   }
-
   return validated;
 }
 
 export async function generateConceptPayload(
   topic: string,
-  difficulty: DifficultyLevel
+  difficulty: DifficultyLevel,
+  session: AiProviderSession
 ): Promise<GenerationPayload> {
-  if (!env.openAiApiKey) {
-    return generateBootstrapConceptPayload(topic, difficulty);
+  if (browserAutomationEnabled()) {
+    try {
+      return await withRetries(
+        () => generateViaBrowserDriver(topic, difficulty, session),
+        { operationName: "concept_generation_browser_ui", maxAttempts: 2, delayMs: 500 }
+      );
+    } catch (error) {
+      recordError("concept_generation_browser_ui", error, {
+        providerKey: session.providerKey,
+        mode: session.mode
+      });
+      logger.warn("Browser automation concept generation failed; using fallback payload", {
+        providerKey: session.providerKey
+      });
+    }
   }
 
-  try {
-    return await withRetries(
-      () => generateFromOpenAi(topic, difficulty),
-      { operationName: "concept_generation", maxAttempts: 3, delayMs: 1000 }
-    );
-  } catch {
-    return generateBootstrapConceptPayload(topic, difficulty);
-  }
+  const fallback = generateBootstrapConceptPayload(topic, difficulty);
+  return {
+    ...fallback,
+    provider: session.providerKey,
+    model: session.modelHint ?? `${session.mode}-manual`
+  };
 }

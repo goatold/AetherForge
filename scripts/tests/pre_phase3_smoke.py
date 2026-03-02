@@ -92,6 +92,16 @@ def run(base_url: str) -> list[CheckResult]:
         alice, f"{base_url}/api/auth/sign-in", {"email": "alice.prephase3@example.com", "next": "/learn"}
     )
     checks.append(CheckResult("alice_signin", alice_signin.status == 200, str(alice_signin.status)))
+    _ = post_json(
+        alice,
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "chatgpt-web",
+            "mode": "browser_ui",
+            "modelHint": "web-default",
+            "loginUrl": "https://chatgpt.com",
+        },
+    )
 
     alice_learn = alice.open(f"{base_url}/learn", timeout=45)
     alice_learn_html = read_text(alice_learn)

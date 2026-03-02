@@ -8,7 +8,8 @@ const appLinks = [
   { href: "/plan", label: "Plan" },
   { href: "/resources", label: "Resources" },
   { href: "/export", label: "Export" },
-  { href: "/collab", label: "Collaborate" }
+  { href: "/collab", label: "Collaborate" },
+  { href: "/ai-connect", label: "AI Connect" }
 ] as const;
 
 export function AppShellNav() {

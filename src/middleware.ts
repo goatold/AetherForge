@@ -11,7 +11,8 @@ const PROTECTED_ROUTES = [
   "/plan",
   "/resources",
   "/export",
-  "/collab"
+  "/collab",
+  "/ai-connect"
 ] as const;
 
 const isProtectedRoute = (pathname: string) =>
@@ -48,6 +49,7 @@ export const config = {
     "/resources/:path*",
     "/export/:path*",
     "/collab/:path*",
+    "/ai-connect/:path*",
     "/sign-in"
   ]
 };

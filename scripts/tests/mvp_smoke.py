@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Extended MVP smoke: quiz, flashcards, plan, resources, export, collab."""
-import argparse, json, sys, urllib.request, urllib.parse, http.cookiejar
+import argparse, json, sys, urllib.request, urllib.parse, urllib.error, http.cookiejar
 from dataclasses import dataclass
 
 @dataclass
@@ -25,8 +25,11 @@ def post_json(opener, url, payload):
     body = json.dumps(payload).encode()
     req = urllib.request.Request(url, data=body, method="POST",
         headers={"content-type": "application/json"})
-    resp = opener.open(req, timeout=60)
-    return resp.status, read_text(resp)
+    try:
+        resp = opener.open(req, timeout=60)
+        return resp.status, read_text(resp)
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode("utf-8", "ignore")
 
 def get(opener, url):
     resp = opener.open(urllib.request.Request(url, method="GET"), timeout=45)
@@ -38,6 +41,12 @@ def run(base_url):
     opener = make_opener()
     post_form(opener, base_url + "/api/auth/sign-in",
         {"email": "alice.prephase3@example.com", "next": "/learn"})
+    post_json(opener, base_url + "/api/ai/session", {
+        "providerKey": "chatgpt-web",
+        "mode": "browser_ui",
+        "modelHint": "web-default",
+        "loginUrl": "https://chatgpt.com"
+    })
     st, body = post_json(opener, base_url + "/api/concepts/generate",
         {"topic": "Distributed Systems", "difficulty": "intermediate"})
     gen = json.loads(body) if body else {}

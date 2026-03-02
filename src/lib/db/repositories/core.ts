@@ -535,6 +535,111 @@ export const internalJobRunQueries = {
   }
 };
 
+export const aiProviderSessionQueries = {
+  findConnectedByUser(userId: string): SqlQuery {
+    return {
+      text: `
+        select
+          id,
+          user_id,
+          provider_key,
+          mode,
+          status,
+          model_hint,
+          login_url,
+          metadata_json,
+          connected_at,
+          disconnected_at,
+          created_at,
+          updated_at
+        from ai_provider_sessions
+        where user_id = $1 and status = 'connected'
+        order by updated_at desc
+        limit 1
+      `,
+      values: [userId]
+    };
+  },
+  upsertConnected(
+    userId: string,
+    providerKey: string,
+    mode: "browser_ui" | "oauth_api",
+    modelHint: string | null,
+    loginUrl: string | null,
+    metadataJson: string
+  ): SqlQuery {
+    return {
+      text: `
+        insert into ai_provider_sessions (
+          user_id,
+          provider_key,
+          mode,
+          status,
+          model_hint,
+          login_url,
+          metadata_json,
+          connected_at,
+          disconnected_at,
+          updated_at
+        )
+        values ($1, $2, $3, 'connected', $4, $5, $6::jsonb, now(), null, now())
+        on conflict (user_id)
+        where status = 'connected'
+        do update
+          set
+            provider_key = excluded.provider_key,
+            mode = excluded.mode,
+            model_hint = excluded.model_hint,
+            login_url = excluded.login_url,
+            metadata_json = excluded.metadata_json,
+            connected_at = now(),
+            disconnected_at = null,
+            updated_at = now()
+        returning
+          id,
+          user_id,
+          provider_key,
+          mode,
+          status,
+          model_hint,
+          login_url,
+          metadata_json,
+          connected_at,
+          disconnected_at,
+          created_at,
+          updated_at
+      `,
+      values: [userId, providerKey, mode, modelHint, loginUrl, metadataJson]
+    };
+  },
+  disconnectByUser(userId: string): SqlQuery {
+    return {
+      text: `
+        update ai_provider_sessions
+        set
+          status = 'disconnected',
+          disconnected_at = now(),
+          updated_at = now()
+        where user_id = $1 and status = 'connected'
+        returning
+          id,
+          user_id,
+          provider_key,
+          mode,
+          status,
+          model_hint,
+          login_url,
+          metadata_json,
+          connected_at,
+          disconnected_at,
+          created_at,
+          updated_at
+      `,
+      values: [userId]
+    };
+  }
+};
+
 export const conceptQueries = {
   insert(workspaceId: string, title: string, summary: string): SqlQuery {
     return {

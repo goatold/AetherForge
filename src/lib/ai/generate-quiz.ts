@@ -1,5 +1,6 @@
-import { env } from "@/lib/env";
 import type { DifficultyLevel } from "@/lib/contracts/domain";
+import type { AiProviderSession } from "@/lib/ai/provider-session";
+import { logger, recordError } from "@/lib/observability";
 
 import {
   type QuizGenerationConceptInput,
@@ -7,54 +8,28 @@ import {
   generateBootstrapQuizPayload,
   validateQuizGenerationPayload
 } from "./quiz";
+import { runChatGptWebPrompt } from "./browser/chatgpt-web";
 import { withRetries } from "./retry";
 
-interface OpenAiChatResponse {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-}
+const browserAutomationEnabled = () => process.env.AI_BROWSER_AUTOMATION === "1";
 
-const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-
-const buildSystemPrompt = () =>
-  [
-    "You generate quiz content as strict JSON.",
-    "Return JSON only with this exact shape:",
-    "{",
-    '  "title": "string",',
-    '  "questions": [',
-    "    {",
-    '      "conceptId": "string|null",',
-    '      "type": "mcq|true_false|short_answer",',
-    '      "prompt": "string",',
-    '      "explanation": "string",',
-    '      "correctAnswerText": "string",',
-    '      "options": [',
-    '        { "key": "string", "text": "string", "isCorrect": true|false }',
-    "      ]",
-    "    }",
-    "  ]",
-    "}",
-    "Rules:",
-    "- Return 3-8 questions.",
-    "- Include at least one mcq and one true_false question.",
-    "- short_answer questions must have an empty options array.",
-    "- mcq and true_false must have exactly one correct option."
-  ].join("\n");
-
-const buildUserPrompt = (
+const buildBrowserPrompt = (
   topic: string,
   difficulty: DifficultyLevel,
   concepts: QuizGenerationConceptInput[]
 ) =>
   [
+    "Return JSON only.",
+    "Shape:",
+    '{ "title":"string", "questions":[{"conceptId":"string|null","type":"mcq|true_false|short_answer","prompt":"string","explanation":"string","correctAnswerText":"string","options":[{"key":"string","text":"string","isCorrect":true|false}]}] }',
+    "Rules:",
+    "- 3-8 questions",
+    "- include at least one mcq and one true_false",
+    "- exactly one correct option for mcq/true_false",
+    "- short_answer must have empty options array",
     `Topic: ${topic}`,
     `Difficulty: ${difficulty}`,
-    `Concepts JSON: ${JSON.stringify(concepts)}`,
-    "Generate a balanced mixed-type quiz."
+    `Concepts JSON: ${JSON.stringify(concepts)}`
   ].join("\n");
 
 const parsePayload = (
@@ -82,70 +57,57 @@ const parsePayload = (
   }
 };
 
-async function generateFromOpenAi(
+async function generateViaBrowserDriver(
   topic: string,
   difficulty: DifficultyLevel,
-  concepts: QuizGenerationConceptInput[]
+  concepts: QuizGenerationConceptInput[],
+  session: AiProviderSession
 ): Promise<QuizGenerationPayload> {
-  const apiKey = env.openAiApiKey;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (session.providerKey !== "chatgpt-web") {
+    throw new Error(`Browser driver not yet implemented for provider: ${session.providerKey}`);
   }
-
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-  const response = await fetch(OPENAI_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: buildSystemPrompt() },
-        { role: "user", content: buildUserPrompt(topic, difficulty, concepts) }
-      ],
-      temperature: 0.2
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI request failed with status ${response.status}`);
-  }
-
-  const body = (await response.json()) as OpenAiChatResponse;
-  const content = body.choices?.[0]?.message?.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("OpenAI response did not include JSON content");
-  }
-
-  const parsed = parsePayload(content, "openai", model);
+  const rawJson = await runChatGptWebPrompt(
+    session.userId,
+    buildBrowserPrompt(topic, difficulty, concepts)
+  );
+  const parsed = parsePayload(rawJson, session.providerKey, session.modelHint ?? "chatgpt-web-ui");
   if (!parsed) {
-    throw new Error("OpenAI quiz response could not be parsed");
+    throw new Error("Browser provider response could not be parsed as quiz JSON.");
   }
   const validated = validateQuizGenerationPayload(parsed);
   if (!validated) {
-    throw new Error("OpenAI quiz response failed schema validation");
+    throw new Error("Browser provider response failed quiz schema validation.");
   }
-
   return validated;
 }
 
 export async function generateQuizPayload(
   topic: string,
   difficulty: DifficultyLevel,
-  concepts: QuizGenerationConceptInput[]
+  concepts: QuizGenerationConceptInput[],
+  session: AiProviderSession
 ): Promise<QuizGenerationPayload> {
-  if (!env.openAiApiKey) {
-    return generateBootstrapQuizPayload(topic, difficulty, concepts);
+  if (browserAutomationEnabled()) {
+    try {
+      return await withRetries(
+        () => generateViaBrowserDriver(topic, difficulty, concepts, session),
+        { operationName: "quiz_generation_browser_ui", maxAttempts: 2, delayMs: 500 }
+      );
+    } catch (error) {
+      recordError("quiz_generation_browser_ui", error, {
+        providerKey: session.providerKey,
+        mode: session.mode
+      });
+      logger.warn("Browser automation quiz generation failed; using fallback payload", {
+        providerKey: session.providerKey
+      });
+    }
   }
 
-  try {
-    return await withRetries(
-      () => generateFromOpenAi(topic, difficulty, concepts),
-      { operationName: "quiz_generation", maxAttempts: 3, delayMs: 1000 }
-    );
-  } catch {
-    return generateBootstrapQuizPayload(topic, difficulty, concepts);
-  }
+  const fallback = generateBootstrapQuizPayload(topic, difficulty, concepts);
+  return {
+    ...fallback,
+    provider: session.providerKey,
+    model: session.modelHint ?? `${session.mode}-manual`
+  };
 }

@@ -14,18 +14,31 @@ This runbook covers first-response checks for the MVP reliability path.
   - `NEXT_PUBLIC_APP_URL`
   - `INTERNAL_JOB_TOKEN`
   - `DATABASE_URL`
+- For experimental browser automation path:
+  - `AI_BROWSER_AUTOMATION=1`
+  - Playwright browser installed: `npx playwright install chromium`
 - App server is running.
 
 ## Primary Commands
 
 - Check internal health:
   - `npm run health:check`
+  - Override target safely per run (without editing `.env.local`):
+    - `NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000 INTERNAL_JOB_TOKEN=... npm run health:check`
 - Smoke-check internal health auth + response contract:
   - `npm run test:smoke:internal-health`
 - Trigger flashcard queue refresh:
   - `npm run job:flashcards:refresh`
 - Smoke-check internal job auth + response contract:
   - `npm run test:smoke:internal-jobs`
+- Smoke-check internal job overlap rejection contract:
+  - `npm run test:smoke:internal-jobs-overlap`
+- Smoke-check AI provider manual-connection contract:
+  - `npm run test:smoke:ai-connection-required`
+- Run consolidated Phase 7 reliability smoke gate:
+  - `npm run test:smoke:phase7-reliability`
+- Run AI schema quality gate (95% minimum, real provider):
+  - `npm run test:quality:ai-schema`
 - Validate app quality gates:
   - `npm run lint && npm run build`
 
@@ -52,6 +65,15 @@ The `internal_job_runs` table records internal job execution lifecycle:
 Current tracked job name:
 
 - `flashcards_queue_refresh`
+- Overlapping `running` rows per job are blocked by a unique partial index to prevent duplicate concurrent executions.
+
+## AI Connection Contract
+
+- Endpoint: `GET/POST/DELETE /api/ai/session`
+- Auth: signed-in app session.
+- Generation routes (`/api/concepts/generate`, `/api/quiz/generate`) now require an active connected AI provider session.
+- If missing, generation returns `409` with reconnect guidance to `/ai-connect`.
+- Browser automation currently has a first implementation for `chatgpt-web`; unsupported providers fall back to deterministic payload generation while preserving provider lineage.
 
 ## Triage Playbook
 

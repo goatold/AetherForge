@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { readSession } from "@/lib/auth/session";
 import { generateConceptPayload } from "@/lib/ai/generate-concepts";
+import { getConnectedAiProviderSession } from "@/lib/ai/provider-session";
 import { logger, recordError } from "@/lib/observability";
 import {
   parseGenerationRequest,
@@ -51,9 +52,19 @@ export async function POST(request: Request) {
     topic: parsedRequest.topic,
     difficulty: parsedRequest.difficulty
   });
+
+  const aiSession = await getConnectedAiProviderSession(session.userId);
+  if (!aiSession) {
+    return NextResponse.json(
+      { error: "AI provider is not connected. Visit /ai-connect and complete manual web login." },
+      { status: 409 }
+    );
+  }
+
   const generatedPayload = await generateConceptPayload(
     parsedRequest.topic,
-    parsedRequest.difficulty
+    parsedRequest.difficulty,
+    aiSession
   );
   const payload = validateGenerationPayload(generatedPayload);
   if (!payload) {

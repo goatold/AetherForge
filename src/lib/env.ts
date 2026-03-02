@@ -4,7 +4,6 @@ interface AppEnv {
   nodeEnv: "development" | "test" | "production";
   appUrl: string;
   authSessionSecret?: string;
-  openAiApiKey?: string;
   databaseUrl?: string;
 }
 
@@ -29,6 +28,5 @@ export const env: AppEnv = {
   nodeEnv: parseNodeEnv(read("NODE_ENV")),
   appUrl: requireValue("NEXT_PUBLIC_APP_URL"),
   authSessionSecret: read("AUTH_SESSION_SECRET"),
-  openAiApiKey: read("OPENAI_API_KEY"),
   databaseUrl: read("DATABASE_URL")
 };

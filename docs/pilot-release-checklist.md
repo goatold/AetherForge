@@ -28,8 +28,9 @@ Use this checklist before cutting a pilot/MVP release. Aligns with Release Gates
 ### 4. AI Quality
 
 - [ ] **Schema-valid generation success rate meets internal threshold**
-  - If using real AI provider: run several concept and quiz generations; note schema validation failures.
-  - Define acceptable failure rate (e.g. &lt;5%) and document or fix causes.
+  - Threshold: **>=95%** success for both concept and quiz generation runs.
+  - Gate command (real provider required): `npm run test:quality:ai-schema`
+  - If gate fails, inspect provider logs/retries and address schema-validation or provider reliability causes before release.
 
 ### 5. Usability
 
@@ -48,6 +49,10 @@ Use this checklist before cutting a pilot/MVP release. Aligns with Release Gates
 | Health check | `npm run health:check` |
 | Smoke test | `npm run test:smoke:pre-phase3` (optional: extended MVP smoke) |
 | Phase 6 hardening smoke | `npm run test:smoke:phase6-hardening` |
+| Phase 7 reliability smoke | `npm run test:smoke:phase7-reliability` |
+| AI manual connection smoke | `npm run test:smoke:ai-connection-required` |
+| AI schema quality gate (95%) | `npm run test:quality:ai-schema` |
+| Internal jobs overlap smoke | `npm run test:smoke:internal-jobs-overlap` |
 | Migrations | `npm run db:migrate` (staging DB) |
 
 ---

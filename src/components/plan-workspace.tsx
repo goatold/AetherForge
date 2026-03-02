@@ -13,7 +13,7 @@ interface MilestoneRecord {
   id: string;
   learning_plan_id: string;
   title: string;
-  due_date: string | null;
+  due_date: string | Date | null;
   completed_at: string | null;
   updated_at: string;
 }
@@ -43,12 +43,20 @@ interface PlanWorkspaceProps {
   initialHasMoreEvents: boolean;
 }
 
-const toInputDate = (value: string | null) => {
+const toInputDate = (value: string | Date | null) => {
   if (!value) {
+    return "";
+  }
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value !== "string") {
     return "";
   }
   return value.slice(0, 10);
 };
+
+const toSortableDueDate = (value: string | Date | null) => toInputDate(value) || "9999-12-31";
 
 export function PlanWorkspace({
   initialPlan,
@@ -122,7 +130,7 @@ export function PlanWorkspace({
       }
       setMilestones((previous) =>
         [...previous, body.milestone!].sort((a, b) =>
-          (a.due_date ?? "9999-12-31").localeCompare(b.due_date ?? "9999-12-31")
+          toSortableDueDate(a.due_date).localeCompare(toSortableDueDate(b.due_date))
         )
       );
       setMilestoneTitleDraft("");
@@ -197,7 +205,9 @@ export function PlanWorkspace({
       setMilestones((previous) =>
         previous
           .map((item) => (item.id === editingMilestoneId ? body.milestone! : item))
-          .sort((a, b) => (a.due_date ?? "9999-12-31").localeCompare(b.due_date ?? "9999-12-31"))
+          .sort((a, b) =>
+            toSortableDueDate(a.due_date).localeCompare(toSortableDueDate(b.due_date))
+          )
       );
       setEditingMilestoneId(null);
       setEditMilestoneTitleDraft("");

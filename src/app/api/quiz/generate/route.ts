@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { generateQuizPayload } from "@/lib/ai/generate-quiz";
+import { getConnectedAiProviderSession } from "@/lib/ai/provider-session";
 import { readSession } from "@/lib/auth/session";
 import {
   conceptArtifactQueries,
@@ -96,6 +97,13 @@ export async function POST(request: Request) {
   }
 
   const difficulty = isDifficulty(workspace.difficulty) ? workspace.difficulty : "beginner";
+  const aiSession = await getConnectedAiProviderSession(session.userId);
+  if (!aiSession) {
+    return NextResponse.json(
+      { error: "AI provider is not connected. Visit /ai-connect and complete manual web login." },
+      { status: 409 }
+    );
+  }
   let payload: Awaited<ReturnType<typeof generateQuizPayload>>;
   try {
     logger.info("Quiz generation started", {
@@ -106,7 +114,8 @@ export async function POST(request: Request) {
     payload = await generateQuizPayload(
       workspace.topic,
       difficulty,
-      conceptsResult.rows
+      conceptsResult.rows,
+      aiSession
     );
   } catch (error) {
     recordError("quiz_generation", error, { workspaceId: workspace.id });
