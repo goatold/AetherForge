@@ -28,6 +28,7 @@ Use this checklist before cutting a pilot/MVP release. Aligns with Release Gates
 ### 4. AI Quality
 
 - [ ] **Schema-valid generation success rate meets internal threshold**
+  - Connection mode contract for MVP: `browser_ui` is supported; `oauth_api` must be rejected until the future OAuth/API milestone lands.
   - Threshold: **>=95%** success for both concept and quiz generation runs.
   - Gate command (real provider required): `npm run test:quality:ai-schema`
   - If gate fails, inspect provider logs/retries and address schema-validation or provider reliability causes before release.

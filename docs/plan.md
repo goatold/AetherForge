@@ -120,7 +120,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Phase 5: in progress (plan title persistence, milestone create/edit/complete/delete workflow, progress snapshot widgets, progress-event timeline updates with readable labels, category filters, and pagination, resources API, and resources workspace UI replacing placeholder pages with note/tag capture, filterable search, quick tag chips, and inline edit/delete controls).
 - Phase 6: in progress (browser print-first study packet export route with section toggles, answer-key/compact options, A4/Letter page-size controls, improved print-fidelity CSS, in-app export preview workspace, optimistic concurrency guards for resource and milestone edits to prevent silent overwrite, and consolidated hardening smoke suite `test:smoke:phase6-hardening`).
 - Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, collaboration workspace UI scaffold, least-privilege hardening so non-owners cannot access pending invite links/tokens, and conflict-safe role update/revoke mutations using expected current role checks with 409 responses on stale writes).
-- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, baseline reliability runbook, observability scaffold in `src/lib/observability/`, pilot release checklist, extended MVP smoke script `test:smoke:mvp`, dedicated internal health/job auth+contract smokes (`test:smoke:internal-health`, `test:smoke:internal-jobs`), deterministic overlap-rejection smoke (`test:smoke:internal-jobs-overlap`) backed by internal job `running`-state uniqueness, consolidated reliability gate runner `test:smoke:phase7-reliability`, and manual browser-based AI connection gating via `/ai-connect` + `ai_provider_sessions` with dedicated smoke `test:smoke:ai-connection-required`).
+- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, baseline reliability runbook, observability scaffold in `src/lib/observability/`, pilot release checklist, extended MVP smoke script `test:smoke:mvp`, dedicated internal health/job auth+contract smokes (`test:smoke:internal-health`, `test:smoke:internal-jobs`), deterministic overlap-rejection smoke (`test:smoke:internal-jobs-overlap`) backed by internal job `running`-state uniqueness, and consolidated reliability gate runner `test:smoke:phase7-reliability`; AI browser-auth redesign details are tracked in the merged section below).
 
 ### Phase 0 - Foundation Establishment (Completed)
 
@@ -290,7 +290,6 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 **Deliverables**
 
 - Metrics, tracing, and error monitoring hooks.
-- Manual provider-session lifecycle plus generation failure telemetry for provider-connection faults.
 - AI output quality checks and schema failure alerts.
 - Pilot release checklist and operational runbook.
 
@@ -369,3 +368,34 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Phases are implemented in dependency order with exit criteria met.
 - Architecture and structure remain aligned to `src/app` repository layout.
 - Release gates are met and pilot launch checklist is complete.
+
+## AI Browser-Auth Redesign Tracking (Merged)
+
+### Objective
+
+Transition AetherForge AI generation from `OPENAI_API_KEY` server API calls to an interactive, user-authenticated browser-interface model (multi-provider), while keeping concept/quiz payload contracts stable for the rest of the app.
+
+### Current Progress
+
+- Completed: removed runtime dependency on `OPENAI_API_KEY` and migrated to connected-provider session gating.
+- Completed: added provider session persistence + APIs (`GET/POST/DELETE /api/ai/session`) and `/ai-connect` UI flow.
+- Completed: kept generation route contracts stable while requiring active connection (`409` when disconnected).
+- Completed: added deterministic smoke/quality coverage for connection gating and 95% AI quality threshold.
+- Completed: added feature-flagged Playwright driver scaffold for `chatgpt-web` (`AI_BROWSER_AUTOMATION=1`), with safe fallback when disabled or driver fails.
+- Completed: hardened provider-session API contract so deferred `oauth_api` mode is rejected until that implementation track ships.
+- Remaining: implement additional browser drivers and execute OAuth/API provider track.
+
+### Scope Decisions Captured
+
+- Proceed with browser-automation design despite brittleness/ToS risk.
+- Target multiple public web interfaces (not ChatGPT-only).
+- Keep existing generation endpoints (`/api/concepts/generate`, `/api/quiz/generate`) as the app-facing contract.
+- Add an explicit future implementation option for official OAuth/API-based provider integrations.
+
+### Future Option: OAuth/API Provider Track
+
+- Design for pluggability now: keep a provider abstraction so browser drivers and OAuth/API providers share the same orchestration contract.
+- Add future data model support for user-scoped OAuth credentials (encrypted tokens, refresh rotation, scopes, revocation metadata).
+- Add provider-specific OAuth connect flows in settings (consent, reconnect, revoke) as a separate milestone.
+- Promote OAuth/API providers to the default execution path once feature parity and reliability targets are met; keep browser automation as fallback only during transition.
+- Update AI quality and reliability gates to report by provider mode (`browser_ui` vs `oauth_api`) to validate cutover readiness.

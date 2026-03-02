@@ -60,6 +60,34 @@ def run(base_url: str):
     opener = make_cookie_opener()
     post_form(opener, f"{base_url}/api/auth/sign-in", {"email": "alice.prephase3@example.com", "next": "/learn"})
 
+    oauth_status, oauth_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "chatgpt-web",
+            "mode": "oauth_api",
+            "modelHint": "oauth-deferred-test",
+            "loginUrl": "https://chatgpt.com",
+        },
+    )
+    oauth_obj = parse_json(oauth_body)
+    oauth_error = oauth_obj.get("error") if isinstance(oauth_obj, dict) else None
+    checks.append(
+        CheckResult(
+            "oauth_mode_rejected_until_implemented",
+            oauth_status == 400,
+            f"status={oauth_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "oauth_mode_rejection_message",
+            isinstance(oauth_error, str) and "not yet implemented" in oauth_error.lower(),
+            str(oauth_error),
+        )
+    )
+
     # Ensure a clean state before assertions.
     request_json(opener, "DELETE", f"{base_url}/api/ai/session")
 

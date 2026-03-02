@@ -55,6 +55,12 @@ export async function POST(request: Request) {
   if (!isMode(body.mode)) {
     return NextResponse.json({ error: "mode must be browser_ui or oauth_api" }, { status: 400 });
   }
+  if (body.mode === "oauth_api") {
+    return NextResponse.json(
+      { error: "oauth_api mode is not yet implemented. Use browser_ui for current MVP releases." },
+      { status: 400 }
+    );
+  }
   const modelHint = normalizeOptional(body.modelHint);
   const loginUrl = normalizeOptional(body.loginUrl);
 
