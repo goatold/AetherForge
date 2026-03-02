@@ -383,6 +383,7 @@ Transition AetherForge AI generation from `OPENAI_API_KEY` server API calls to a
 - Completed: added deterministic smoke/quality coverage for connection gating and 95% AI quality threshold.
 - Completed: added feature-flagged Playwright driver scaffold for `chatgpt-web` (`AI_BROWSER_AUTOMATION=1`), with safe fallback when disabled or driver fails.
 - Completed: hardened provider-session API contract so deferred `oauth_api` mode is rejected until that implementation track ships.
+- Completed: hardened provider-session API contract with explicit provider allowlist enforcement for browser providers (`chatgpt-web`, `claude-web`, `gemini-web`).
 - Remaining: implement additional browser drivers and execute OAuth/API provider track.
 
 ### Scope Decisions Captured

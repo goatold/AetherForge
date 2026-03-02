@@ -15,6 +15,8 @@ interface ConnectBody {
 const isMode = (value: unknown): value is AiProviderMode =>
   value === "browser_ui" || value === "oauth_api";
 
+const SUPPORTED_PROVIDER_KEYS = new Set(["chatgpt-web", "claude-web", "gemini-web"]);
+
 const normalizeOptional = (value: unknown): string | null => {
   if (typeof value !== "string") {
     return null;
@@ -51,6 +53,15 @@ export async function POST(request: Request) {
   const providerKey = normalizeOptional(body.providerKey);
   if (!providerKey) {
     return NextResponse.json({ error: "providerKey is required" }, { status: 400 });
+  }
+  if (!SUPPORTED_PROVIDER_KEYS.has(providerKey)) {
+    return NextResponse.json(
+      {
+        error:
+          "providerKey is not a supported provider. Use one of: chatgpt-web, claude-web, gemini-web."
+      },
+      { status: 400 }
+    );
   }
   if (!isMode(body.mode)) {
     return NextResponse.json({ error: "mode must be browser_ui or oauth_api" }, { status: 400 });

@@ -88,6 +88,34 @@ def run(base_url: str):
         )
     )
 
+    unknown_status, unknown_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "unknown-web",
+            "mode": "browser_ui",
+            "modelHint": "unknown-provider-test",
+            "loginUrl": "https://example.com",
+        },
+    )
+    unknown_obj = parse_json(unknown_body)
+    unknown_error = unknown_obj.get("error") if isinstance(unknown_obj, dict) else None
+    checks.append(
+        CheckResult(
+            "unknown_provider_rejected",
+            unknown_status == 400,
+            f"status={unknown_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "unknown_provider_rejection_message",
+            isinstance(unknown_error, str) and "supported provider" in unknown_error.lower(),
+            str(unknown_error),
+        )
+    )
+
     # Ensure a clean state before assertions.
     request_json(opener, "DELETE", f"{base_url}/api/ai/session")
 

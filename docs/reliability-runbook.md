@@ -71,6 +71,7 @@ Current tracked job name:
 
 - Endpoint: `GET/POST/DELETE /api/ai/session`
 - Auth: signed-in app session.
+- `POST /api/ai/session` currently enforces a provider allowlist: `chatgpt-web`, `claude-web`, `gemini-web`.
 - `POST /api/ai/session` currently accepts only `mode: "browser_ui"` for MVP reliability. `oauth_api` is intentionally rejected (`400`) until the OAuth/API provider track is implemented.
 - Generation routes (`/api/concepts/generate`, `/api/quiz/generate`) now require an active connected AI provider session.
 - If missing, generation returns `409` with reconnect guidance to `/ai-connect`.
