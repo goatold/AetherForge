@@ -88,6 +88,36 @@ def run(base_url: str):
         )
     )
 
+    whitespace_provider_status, whitespace_provider_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": " chatgpt-web ",
+            "mode": "browser_ui",
+            "modelHint": "provider-whitespace-test",
+            "loginUrl": "https://chatgpt.com",
+        },
+    )
+    whitespace_provider_obj = parse_json(whitespace_provider_body)
+    whitespace_provider_error = (
+        whitespace_provider_obj.get("error") if isinstance(whitespace_provider_obj, dict) else None
+    )
+    checks.append(
+        CheckResult(
+            "provider_key_whitespace_rejected",
+            whitespace_provider_status == 400,
+            f"status={whitespace_provider_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "provider_key_whitespace_message",
+            isinstance(whitespace_provider_error, str) and "providerkey" in whitespace_provider_error.lower(),
+            str(whitespace_provider_error),
+        )
+    )
+
     unknown_status, unknown_body = request_json(
         opener,
         "POST",
@@ -113,6 +143,130 @@ def run(base_url: str):
             "unknown_provider_rejection_message",
             isinstance(unknown_error, str) and "supported provider" in unknown_error.lower(),
             str(unknown_error),
+        )
+    )
+
+    mismatched_url_status, mismatched_url_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "chatgpt-web",
+            "mode": "browser_ui",
+            "modelHint": "mismatched-login-url-test",
+            "loginUrl": "https://example.com",
+        },
+    )
+    mismatched_url_obj = parse_json(mismatched_url_body)
+    mismatched_url_error = (
+        mismatched_url_obj.get("error") if isinstance(mismatched_url_obj, dict) else None
+    )
+    checks.append(
+        CheckResult(
+            "provider_login_url_mismatch_rejected",
+            mismatched_url_status == 400,
+            f"status={mismatched_url_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "provider_login_url_mismatch_message",
+            isinstance(mismatched_url_error, str) and "canonical login url" in mismatched_url_error.lower(),
+            str(mismatched_url_error),
+        )
+    )
+
+    non_canonical_url_status, non_canonical_url_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "chatgpt-web",
+            "mode": "browser_ui",
+            "modelHint": "non-canonical-login-url-test",
+            "loginUrl": "https://chatgpt.com/login",
+        },
+    )
+    non_canonical_url_obj = parse_json(non_canonical_url_body)
+    non_canonical_url_error = (
+        non_canonical_url_obj.get("error") if isinstance(non_canonical_url_obj, dict) else None
+    )
+    checks.append(
+        CheckResult(
+            "provider_login_url_non_canonical_rejected",
+            non_canonical_url_status == 400,
+            f"status={non_canonical_url_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "provider_login_url_non_canonical_message",
+            isinstance(non_canonical_url_error, str) and "canonical login url" in non_canonical_url_error.lower(),
+            str(non_canonical_url_error),
+        )
+    )
+
+    oversized_model_hint_status, oversized_model_hint_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "chatgpt-web",
+            "mode": "browser_ui",
+            "modelHint": "x" * 300,
+            "loginUrl": "https://chatgpt.com",
+        },
+    )
+    oversized_model_hint_obj = parse_json(oversized_model_hint_body)
+    oversized_model_hint_error = (
+        oversized_model_hint_obj.get("error")
+        if isinstance(oversized_model_hint_obj, dict)
+        else None
+    )
+    checks.append(
+        CheckResult(
+            "model_hint_too_long_rejected",
+            oversized_model_hint_status == 400,
+            f"status={oversized_model_hint_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "model_hint_too_long_message",
+            isinstance(oversized_model_hint_error, str) and "modelhint" in oversized_model_hint_error.lower(),
+            str(oversized_model_hint_error),
+        )
+    )
+
+    invalid_model_hint_status, invalid_model_hint_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "chatgpt-web",
+            "mode": "browser_ui",
+            "modelHint": "gpt-4o\nunsafe",
+            "loginUrl": "https://chatgpt.com",
+        },
+    )
+    invalid_model_hint_obj = parse_json(invalid_model_hint_body)
+    invalid_model_hint_error = (
+        invalid_model_hint_obj.get("error")
+        if isinstance(invalid_model_hint_obj, dict)
+        else None
+    )
+    checks.append(
+        CheckResult(
+            "model_hint_invalid_chars_rejected",
+            invalid_model_hint_status == 400,
+            f"status={invalid_model_hint_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "model_hint_invalid_chars_message",
+            isinstance(invalid_model_hint_error, str) and "modelhint" in invalid_model_hint_error.lower(),
+            str(invalid_model_hint_error),
         )
     )
 
@@ -195,6 +349,42 @@ def run(base_url: str):
             "quiz_generation_after_connect",
             quiz_status == 200 and isinstance(quiz_id, str),
             f"status={quiz_status}",
+        )
+    )
+
+    disconnect_status, disconnect_body = request_json(opener, "DELETE", f"{base_url}/api/ai/session")
+    disconnect_obj = parse_json(disconnect_body)
+    disconnected = disconnect_obj.get("disconnected") if isinstance(disconnect_obj, dict) else None
+    checks.append(
+        CheckResult(
+            "manual_provider_disconnect",
+            disconnect_status == 200 and disconnected is True,
+            f"status={disconnect_status}",
+        )
+    )
+
+    post_disconnect_status, post_disconnect_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/concepts/generate",
+        {"topic": "Disconnected Topic", "difficulty": "intermediate"},
+    )
+    post_disconnect_obj = parse_json(post_disconnect_body)
+    post_disconnect_error = (
+        post_disconnect_obj.get("error") if isinstance(post_disconnect_obj, dict) else None
+    )
+    checks.append(
+        CheckResult(
+            "concept_generation_requires_reconnect_after_disconnect",
+            post_disconnect_status == 409,
+            f"status={post_disconnect_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "concept_generation_reconnect_error_after_disconnect",
+            isinstance(post_disconnect_error, str) and "connect" in post_disconnect_error.lower(),
+            str(post_disconnect_error),
         )
     )
 

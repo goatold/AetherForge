@@ -16,6 +16,12 @@ const isMode = (value: unknown): value is AiProviderMode =>
   value === "browser_ui" || value === "oauth_api";
 
 const SUPPORTED_PROVIDER_KEYS = new Set(["chatgpt-web", "claude-web", "gemini-web"]);
+const MAX_MODEL_HINT_LENGTH = 120;
+const PROVIDER_LOGIN_URLS: Record<string, string> = {
+  "chatgpt-web": "https://chatgpt.com",
+  "claude-web": "https://claude.ai",
+  "gemini-web": "https://gemini.google.com"
+};
 
 const normalizeOptional = (value: unknown): string | null => {
   if (typeof value !== "string") {
@@ -23,6 +29,39 @@ const normalizeOptional = (value: unknown): string | null => {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeProviderKey = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return value.length > 0 ? value : null;
+};
+
+const isModelHintValid = (modelHint: string): boolean =>
+  /^[A-Za-z0-9._:/ -]+$/.test(modelHint);
+
+const isAllowedLoginUrl = (providerKey: string, loginUrl: string | null): boolean => {
+  if (!loginUrl) {
+    return false;
+  }
+  const expectedUrl = PROVIDER_LOGIN_URLS[providerKey];
+  if (!expectedUrl) {
+    return false;
+  }
+  try {
+    const parsedLoginUrl = new URL(loginUrl);
+    const parsedExpectedUrl = new URL(expectedUrl);
+    const normalizedLoginUrl = `${parsedLoginUrl.protocol}//${parsedLoginUrl.host}${parsedLoginUrl.pathname.replace(/\/$/, "")}`;
+    const normalizedExpectedUrl = `${parsedExpectedUrl.protocol}//${parsedExpectedUrl.host}${parsedExpectedUrl.pathname.replace(/\/$/, "")}`;
+    return (
+      normalizedLoginUrl === normalizedExpectedUrl &&
+      parsedLoginUrl.search.length === 0 &&
+      parsedLoginUrl.hash.length === 0
+    );
+  } catch {
+    return false;
+  }
 };
 
 export async function GET() {
@@ -50,9 +89,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   const body = (rawBody ?? {}) as ConnectBody;
-  const providerKey = normalizeOptional(body.providerKey);
+  const providerKey = normalizeProviderKey(body.providerKey);
   if (!providerKey) {
     return NextResponse.json({ error: "providerKey is required" }, { status: 400 });
+  }
+  if (providerKey.trim() !== providerKey) {
+    return NextResponse.json(
+      { error: "providerKey must not include leading or trailing whitespace." },
+      { status: 400 }
+    );
   }
   if (!SUPPORTED_PROVIDER_KEYS.has(providerKey)) {
     return NextResponse.json(
@@ -73,7 +118,28 @@ export async function POST(request: Request) {
     );
   }
   const modelHint = normalizeOptional(body.modelHint);
+  if (modelHint && modelHint.length > MAX_MODEL_HINT_LENGTH) {
+    return NextResponse.json(
+      { error: `modelHint must be ${MAX_MODEL_HINT_LENGTH} characters or fewer.` },
+      { status: 400 }
+    );
+  }
+  if (modelHint && !isModelHintValid(modelHint)) {
+    return NextResponse.json(
+      { error: "modelHint contains unsupported characters." },
+      { status: 400 }
+    );
+  }
   const loginUrl = normalizeOptional(body.loginUrl);
+  if (!isAllowedLoginUrl(providerKey, loginUrl)) {
+    return NextResponse.json(
+      {
+        error:
+          "loginUrl must match the canonical login URL over HTTPS for the selected provider key."
+      },
+      { status: 400 }
+    );
+  }
 
   const result = await executeQuery<{
     id: string;

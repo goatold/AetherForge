@@ -384,6 +384,11 @@ Transition AetherForge AI generation from `OPENAI_API_KEY` server API calls to a
 - Completed: added feature-flagged Playwright driver scaffold for `chatgpt-web` (`AI_BROWSER_AUTOMATION=1`), with safe fallback when disabled or driver fails.
 - Completed: hardened provider-session API contract so deferred `oauth_api` mode is rejected until that implementation track ships.
 - Completed: hardened provider-session API contract with explicit provider allowlist enforcement for browser providers (`chatgpt-web`, `claude-web`, `gemini-web`).
+- Completed: hardened provider-session API contract so `loginUrl` must match the selected provider canonical HTTPS login URL.
+- Completed: hardened provider-session API contract with `modelHint` length validation to keep session metadata bounded and deterministic.
+- Completed: hardened provider-session API contract with safe `modelHint` character validation to reject control/special-character payloads.
+- Completed: expanded connection smoke coverage to assert disconnect semantics (`DELETE /api/ai/session`) re-enable generation gating (`409` reconnect required).
+- Completed: hardened provider-session API contract to reject non-canonical `providerKey` formatting (leading/trailing whitespace).
 - Remaining: implement additional browser drivers and execute OAuth/API provider track.
 
 ### Scope Decisions Captured
