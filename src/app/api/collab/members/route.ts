@@ -32,16 +32,27 @@ const canManageMembers = (ownerUserId: string, userId: string) => ownerUserId ==
 const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const buildInviteToken = () => randomBytes(24).toString("base64url");
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await readSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const workspaceResult = await executeQuery<{ id: string; owner_user_id: string }>(
+  const workspaceResult = await executeQuery<{
+    id: string;
+    owner_user_id: string;
+    topic: string;
+    difficulty: string;
+    created_at: string;
+  }>(
     workspaceQueries.listForUser(session.userId)
   );
-  const workspace = workspaceResult.rows[0];
+  const { searchParams } = new URL(request.url);
+  const requestedWorkspaceId = searchParams.get("workspaceId")?.trim() ?? "";
+  const workspace =
+    requestedWorkspaceId.length > 0
+      ? workspaceResult.rows.find((item) => item.id === requestedWorkspaceId)
+      : workspaceResult.rows[0];
   if (!workspace) {
     return NextResponse.json({ members: [], pendingInvites: [], canManage: false });
   }
@@ -54,14 +65,15 @@ export async function GET() {
     role: Role;
     created_at: string;
   }>(workspaceQueries.listMembers(workspace.id));
-  const invitesResult = await executeQuery<PendingInviteRecord>(
-    workspaceQueries.listPendingInvites(workspace.id)
-  );
+  const canManage = canManageMembers(workspace.owner_user_id, session.userId);
+  const invitesResult = canManage
+    ? await executeQuery<PendingInviteRecord>(workspaceQueries.listPendingInvites(workspace.id))
+    : { rows: [] as PendingInviteRecord[] };
 
   return NextResponse.json({
     members: membersResult.rows,
     pendingInvites: invitesResult.rows,
-    canManage: canManageMembers(workspace.owner_user_id, session.userId)
+    canManage
   });
 }
 

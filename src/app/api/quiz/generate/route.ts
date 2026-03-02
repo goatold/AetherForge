@@ -13,6 +13,7 @@ import {
   workspaceQueries
 } from "@/lib/db";
 import { DIFFICULTY_LEVELS } from "@/lib/contracts/domain";
+import { logger, recordError } from "@/lib/observability";
 
 const isDifficulty = (value: string): value is (typeof DIFFICULTY_LEVELS)[number] =>
   DIFFICULTY_LEVELS.includes(value as (typeof DIFFICULTY_LEVELS)[number]);
@@ -95,11 +96,22 @@ export async function POST(request: Request) {
   }
 
   const difficulty = isDifficulty(workspace.difficulty) ? workspace.difficulty : "beginner";
-  const payload = await generateQuizPayload(
-    workspace.topic,
-    difficulty,
-    conceptsResult.rows
-  );
+  let payload: Awaited<ReturnType<typeof generateQuizPayload>>;
+  try {
+    logger.info("Quiz generation started", {
+      workspaceId: workspace.id,
+      difficulty,
+      conceptCount: conceptsResult.rows.length
+    });
+    payload = await generateQuizPayload(
+      workspace.topic,
+      difficulty,
+      conceptsResult.rows
+    );
+  } catch (error) {
+    recordError("quiz_generation", error, { workspaceId: workspace.id });
+    return NextResponse.json({ error: "Failed to generate quiz payload" }, { status: 500 });
+  }
   const quizTitle =
     body.conceptIds && body.conceptIds.length > 0
       ? `Targeted retry: ${workspace.topic}`
@@ -173,8 +185,9 @@ export async function POST(request: Request) {
 
     await client.query("commit");
     return NextResponse.json({ quizId: quiz.id });
-  } catch {
+  } catch (error) {
     await client.query("rollback");
+    recordError("quiz_generation_persistence", error, { workspaceId: workspace.id });
     return NextResponse.json({ error: "Failed to generate quiz" }, { status: 500 });
   } finally {
     client.release();

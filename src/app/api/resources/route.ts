@@ -69,6 +69,7 @@ export async function GET(request: Request) {
     note_text: string | null;
     tags: string[];
     created_at: string;
+    updated_at: string;
   }>(
     resourceQueries.listByWorkspaceFiltered(
       workspace.id,
@@ -118,6 +119,7 @@ export async function POST(request: Request) {
     note_text: string | null;
     tags: string[];
     created_at: string;
+    updated_at: string;
   }>(
     resourceQueries.insert(
       workspace.id,

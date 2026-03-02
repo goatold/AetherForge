@@ -10,6 +10,7 @@ interface ResourceRecord {
   note_text: string | null;
   tags: string[];
   created_at: string;
+  updated_at: string;
 }
 
 interface ResourcesWorkspaceProps {
@@ -125,7 +126,9 @@ export function ResourcesWorkspace({ initialResources }: ResourcesWorkspaceProps
           title: editTitleDraft,
           url: editUrlDraft || null,
           noteText: editNoteDraft || null,
-          tags: editTagsDraft
+          tags: editTagsDraft,
+          expectedUpdatedAt:
+            resources.find((item) => item.id === editingResourceId)?.updated_at ?? null
         })
       });
       const body = (await response.json().catch(() => null)) as

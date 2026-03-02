@@ -20,8 +20,12 @@ This runbook covers first-response checks for the MVP reliability path.
 
 - Check internal health:
   - `npm run health:check`
+- Smoke-check internal health auth + response contract:
+  - `npm run test:smoke:internal-health`
 - Trigger flashcard queue refresh:
   - `npm run job:flashcards:refresh`
+- Smoke-check internal job auth + response contract:
+  - `npm run test:smoke:internal-jobs`
 - Validate app quality gates:
   - `npm run lint && npm run build`
 

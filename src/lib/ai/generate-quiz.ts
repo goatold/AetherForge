@@ -7,6 +7,7 @@ import {
   generateBootstrapQuizPayload,
   validateQuizGenerationPayload
 } from "./quiz";
+import { withRetries } from "./retry";
 
 interface OpenAiChatResponse {
   choices?: Array<{
@@ -140,7 +141,10 @@ export async function generateQuizPayload(
   }
 
   try {
-    return await generateFromOpenAi(topic, difficulty, concepts);
+    return await withRetries(
+      () => generateFromOpenAi(topic, difficulty, concepts),
+      { operationName: "quiz_generation", maxAttempts: 3, delayMs: 1000 }
+    );
   } catch {
     return generateBootstrapQuizPayload(topic, difficulty, concepts);
   }

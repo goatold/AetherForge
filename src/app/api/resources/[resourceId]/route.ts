@@ -8,6 +8,7 @@ interface ResourcePatchBody {
   url?: string | null;
   noteText?: string | null;
   tags?: string[] | string | null;
+  expectedUpdatedAt?: string;
 }
 
 const normalizeUrl = (value: string | null | undefined): string | null => {
@@ -63,6 +64,7 @@ export async function PATCH(
     url: string | null;
     note_text: string | null;
     tags: string[];
+    updated_at: string;
   }>(resourceQueries.findByIdForUser(resourceId, session.userId));
   const existing = existingResult.rows[0];
   if (!existing) {
@@ -85,6 +87,13 @@ export async function PATCH(
     body.noteText === undefined ? normalizeNote(existing.note_text) : normalizeNote(body.noteText);
   const tags = body.tags === undefined ? existing.tags : normalizeTags(body.tags);
 
+  const expectedUpdatedAt = body.expectedUpdatedAt?.trim();
+  if (!expectedUpdatedAt) {
+    return NextResponse.json(
+      { error: "expectedUpdatedAt is required to prevent stale updates" },
+      { status: 400 }
+    );
+  }
   const updatedResult = await executeQuery<{
     id: string;
     workspace_id: string;
@@ -93,10 +102,16 @@ export async function PATCH(
     note_text: string | null;
     tags: string[];
     created_at: string;
-  }>(resourceQueries.updateById(resourceId, title, url, noteText, tags));
+    updated_at: string;
+  }>(
+    resourceQueries.updateByIdIfUnchanged(resourceId, title, url, noteText, tags, expectedUpdatedAt)
+  );
   const resource = updatedResult.rows[0] ?? null;
   if (!resource) {
-    return NextResponse.json({ error: "Failed to update resource" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Resource was updated by another change. Refresh and retry." },
+      { status: 409 }
+    );
   }
 
   const workspaceResult = await executeQuery<{ id: string }>(

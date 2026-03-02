@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { readSession } from "@/lib/auth/session";
 import { generateConceptPayload } from "@/lib/ai/generate-concepts";
+import { logger, recordError } from "@/lib/observability";
 import {
   parseGenerationRequest,
   validateGenerationPayload
@@ -45,12 +46,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
 
+  logger.info("Concept generation started", {
+    workspaceId: workspace.id,
+    topic: parsedRequest.topic,
+    difficulty: parsedRequest.difficulty
+  });
   const generatedPayload = await generateConceptPayload(
     parsedRequest.topic,
     parsedRequest.difficulty
   );
   const payload = validateGenerationPayload(generatedPayload);
   if (!payload) {
+    recordError("concept_generation_validation", new Error("Generated payload failed validation"), {
+      workspaceId: workspace.id
+    });
     return NextResponse.json({ error: "Generated payload failed validation" }, { status: 500 });
   }
 

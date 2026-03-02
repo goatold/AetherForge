@@ -26,6 +26,7 @@ Current repository state:
 - Onboarding now supports persisted topic, difficulty, and learning goals via `GET/PATCH /api/workspace`.
 - Concept generation/artifact lineage, quiz attempt/review/compare, and flashcard SRS queue/review APIs are implemented.
 - Plan milestones, progress timeline, resources CRUD/filtering, study-packet export, collaboration invites/roles, and internal reliability endpoints are available.
+- Reliability/security hardening now includes optimistic-concurrency protections (resources, milestones, collaboration role/revoke), least-privilege invite visibility, and dedicated smoke suites for Phase 6 and internal reliability contracts.
 - `src/app/globals.css` provides shared workspace styling, and `package.json` includes the scripts needed for migrations, jobs, health checks, linting, and build.
 
 This means AetherForge is now a functional MVP-in-progress with most core workflows implemented, and remaining work is focused on integration depth, quality hardening, and release readiness.
@@ -117,9 +118,9 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Phase 3: in progress (quiz generation from concepts, attempt start/submit scoring flow, concept-linked weak-area feedback, attempt trend visibility with timeframe query support, deep-linkable question-by-question review pages, attempt comparison analytics across workspace and per-attempt views, and targeted retry quiz generation from weak concepts).
 - Phase 4: in progress (flashcard generation from quiz misses, SM-2-style scheduler utility, due-queue API, review scoring endpoint, flashcards workspace UI replacing placeholder page, an internal idempotent queue-refresh job endpoint for scheduled top-ups, and a cron-friendly job runner script).
 - Phase 5: in progress (plan title persistence, milestone create/edit/complete/delete workflow, progress snapshot widgets, progress-event timeline updates with readable labels, category filters, and pagination, resources API, and resources workspace UI replacing placeholder pages with note/tag capture, filterable search, quick tag chips, and inline edit/delete controls).
-- Phase 6: in progress (browser print-first study packet export route with section toggles, answer-key/compact options, A4/Letter page-size controls, improved print-fidelity CSS, and in-app export preview workspace).
-- Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, and collaboration workspace UI scaffold).
-- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, and baseline reliability runbook).
+- Phase 6: in progress (browser print-first study packet export route with section toggles, answer-key/compact options, A4/Letter page-size controls, improved print-fidelity CSS, in-app export preview workspace, optimistic concurrency guards for resource and milestone edits to prevent silent overwrite, and consolidated hardening smoke suite `test:smoke:phase6-hardening`).
+- Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, collaboration workspace UI scaffold, least-privilege hardening so non-owners cannot access pending invite links/tokens, and conflict-safe role update/revoke mutations using expected current role checks with 409 responses on stale writes).
+- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, baseline reliability runbook, observability scaffold in `src/lib/observability/`, pilot release checklist, extended MVP smoke script `test:smoke:mvp`, dedicated internal health/job auth+contract smokes (`test:smoke:internal-health`, `test:smoke:internal-jobs`), AI retry/fallback for concept and quiz generation).
 
 ### Phase 0 - Foundation Establishment (Completed)
 

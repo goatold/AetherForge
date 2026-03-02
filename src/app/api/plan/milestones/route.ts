@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     title: string;
     due_date: string | null;
     completed_at: string | null;
+    updated_at: string;
   }>(planMilestoneQueries.insert(plan.id, title, parseDueDate(body.dueDate)));
   const milestone = milestoneResult.rows[0] ?? null;
   if (milestone) {

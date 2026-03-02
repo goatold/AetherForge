@@ -12,6 +12,7 @@ interface MilestonePatchBody {
   title?: string;
   dueDate?: string | null;
   completed?: boolean;
+  expectedUpdatedAt?: string;
 }
 
 const parseDueDate = (value: string | null | undefined): string | null => {
@@ -52,6 +53,7 @@ export async function PATCH(
     title: string;
     due_date: string | null;
     completed_at: string | null;
+    updated_at: string;
   }>(
     planMilestoneQueries.findByIdForUser(milestoneId, session.userId)
   );
@@ -66,8 +68,16 @@ export async function PATCH(
     title: string;
     due_date: string | null;
     completed_at: string | null;
+    updated_at: string;
   } | null = null;
   let eventType: string | null = null;
+  const expectedUpdatedAt = body.expectedUpdatedAt?.trim();
+  if (!expectedUpdatedAt) {
+    return NextResponse.json(
+      { error: "expectedUpdatedAt is required to prevent stale updates" },
+      { status: 400 }
+    );
+  }
 
   if (typeof body.completed === "boolean") {
     const updatedResult = await executeQuery<{
@@ -76,7 +86,8 @@ export async function PATCH(
       title: string;
       due_date: string | null;
       completed_at: string | null;
-    }>(planMilestoneQueries.setCompleted(milestoneId, body.completed));
+      updated_at: string;
+    }>(planMilestoneQueries.setCompletedIfUnchanged(milestoneId, body.completed, expectedUpdatedAt));
     milestone = updatedResult.rows[0] ?? null;
     eventType = body.completed ? "plan_milestone_completed" : "plan_milestone_reopened";
   } else {
@@ -92,29 +103,41 @@ export async function PATCH(
       title: string;
       due_date: string | null;
       completed_at: string | null;
-    }>(planMilestoneQueries.updateDetails(milestoneId, nextTitle, dueDate));
+      updated_at: string;
+    }>(
+      planMilestoneQueries.updateDetailsIfUnchanged(
+        milestoneId,
+        nextTitle,
+        dueDate,
+        expectedUpdatedAt
+      )
+    );
     milestone = updatedResult.rows[0] ?? null;
     eventType = "plan_milestone_updated";
   }
-
-  if (milestone) {
-    const workspaceResult = await executeQuery<{ id: string }>(
-      workspaceQueries.listForUser(session.userId)
+  if (!milestone) {
+    return NextResponse.json(
+      { error: "Milestone was updated by another change. Refresh and retry." },
+      { status: 409 }
     );
-    const workspace = workspaceResult.rows[0];
-    if (workspace) {
-      await executeQuery(
-        progressQueries.insert(
-          workspace.id,
-          eventType ?? "plan_milestone_updated",
-          JSON.stringify({
-            milestoneId: milestone.id,
-            title: milestone.title,
-            dueDate: milestone.due_date
-          })
-        )
-      );
-    }
+  }
+
+  const workspaceResult = await executeQuery<{ id: string }>(
+    workspaceQueries.listForUser(session.userId)
+  );
+  const workspace = workspaceResult.rows[0];
+  if (workspace) {
+    await executeQuery(
+      progressQueries.insert(
+        workspace.id,
+        eventType ?? "plan_milestone_updated",
+        JSON.stringify({
+          milestoneId: milestone.id,
+          title: milestone.title,
+          dueDate: milestone.due_date
+        })
+      )
+    );
   }
 
   return NextResponse.json({

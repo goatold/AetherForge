@@ -58,6 +58,7 @@ export default async function PlanPage() {
           title: string;
           due_date: string | null;
           completed_at: string | null;
+          updated_at: string;
         }>(planMilestoneQueries.listByPlan(plan.id))
       : { rows: [] as Array<{
           id: string;
@@ -65,6 +66,7 @@ export default async function PlanPage() {
           title: string;
           due_date: string | null;
           completed_at: string | null;
+          updated_at: string;
         }> };
 
   const [quizStatsResult, flashcardStatsResult] = await Promise.all([

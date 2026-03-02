@@ -15,6 +15,7 @@ interface MilestoneRecord {
   title: string;
   due_date: string | null;
   completed_at: string | null;
+  updated_at: string;
 }
 
 interface TimelineEvent {
@@ -138,7 +139,10 @@ export function PlanWorkspace({
       const response = await fetch(`/api/plan/milestones/${milestoneId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ completed: nextCompleted })
+        body: JSON.stringify({
+          completed: nextCompleted,
+          expectedUpdatedAt: milestones.find((item) => item.id === milestoneId)?.updated_at ?? null
+        })
       });
       const body = (await response.json().catch(() => null)) as
         | { error?: string; milestone?: MilestoneRecord | null }
@@ -178,7 +182,9 @@ export function PlanWorkspace({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           title: editMilestoneTitleDraft,
-          dueDate: editMilestoneDueDateDraft || null
+          dueDate: editMilestoneDueDateDraft || null,
+          expectedUpdatedAt:
+            milestones.find((item) => item.id === editingMilestoneId)?.updated_at ?? null
         })
       });
       const body = (await response.json().catch(() => null)) as

@@ -37,27 +37,44 @@ export default async function CollabPage() {
     role: Role;
     created_at: string;
   }>(workspaceQueries.listMembers(workspace.id));
-  const pendingInvitesResult = await executeQuery<{
-    id: string;
-    workspace_id: string;
-    invited_email: string;
-    role: InviteRole;
-    token: string;
-    invited_by_user_id: string;
-    expires_at: string;
-    accepted_at: string | null;
-    accepted_by_user_id: string | null;
-    revoked_at: string | null;
-    revoked_by_user_id: string | null;
-    created_at: string;
-    updated_at: string;
-  }>(workspaceQueries.listPendingInvites(workspace.id));
+  const canManage = workspace.owner_user_id === session.userId;
+  const pendingInvitesResult = canManage
+    ? await executeQuery<{
+        id: string;
+        workspace_id: string;
+        invited_email: string;
+        role: InviteRole;
+        token: string;
+        invited_by_user_id: string;
+        expires_at: string;
+        accepted_at: string | null;
+        accepted_by_user_id: string | null;
+        revoked_at: string | null;
+        revoked_by_user_id: string | null;
+        created_at: string;
+        updated_at: string;
+      }>(workspaceQueries.listPendingInvites(workspace.id))
+    : { rows: [] as Array<{
+        id: string;
+        workspace_id: string;
+        invited_email: string;
+        role: InviteRole;
+        token: string;
+        invited_by_user_id: string;
+        expires_at: string;
+        accepted_at: string | null;
+        accepted_by_user_id: string | null;
+        revoked_at: string | null;
+        revoked_by_user_id: string | null;
+        created_at: string;
+        updated_at: string;
+      }> };
 
   return (
     <CollabWorkspace
       initialMembers={membersResult.rows}
       initialPendingInvites={pendingInvitesResult.rows}
-      canManage={workspace.owner_user_id === session.userId}
+      canManage={canManage}
     />
   );
 }

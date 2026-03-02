@@ -10,8 +10,17 @@
     "db:migrate": "bash scripts/db/migrate.sh",
     "db:seed": "bash scripts/db/seed.sh",
     "test:smoke:pre-phase3": "python3 scripts/tests/pre_phase3_smoke.py",
+    "test:smoke:mvp": "python3 scripts/tests/mvp_smoke.py",
     "job:flashcards:refresh": "bash scripts/jobs/refresh_flashcards_queue.sh",
-    "health:check": "bash scripts/jobs/check_internal_health.sh"
+    "health:check": "bash scripts/jobs/check_internal_health.sh",
+    "test:smoke:resources-concurrency": "python3 scripts/tests/resources_concurrency_smoke.py",
+    "test:smoke:milestones-concurrency": "python3 scripts/tests/milestones_concurrency_smoke.py",
+    "test:smoke:collab-least-privilege": "python3 scripts/tests/collab_least_privilege_smoke.py",
+    "test:smoke:collab-role-conflict": "python3 scripts/tests/collab_role_conflict_smoke.py",
+    "test:smoke:collab-revoke-conflict": "python3 scripts/tests/collab_revoke_conflict_smoke.py",
+    "test:smoke:phase6-hardening": "bash scripts/tests/run_phase6_hardening_smoke.sh",
+    "test:smoke:internal-health": "python3 scripts/tests/internal_health_smoke.py",
+    "test:smoke:internal-jobs": "python3 scripts/tests/internal_jobs_smoke.py"
   },
   "dependencies": {
     "next": "^15.1.0",

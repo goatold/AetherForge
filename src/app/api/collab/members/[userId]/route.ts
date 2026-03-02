@@ -8,6 +8,7 @@ const MUTABLE_ROLES: Role[] = ["editor", "viewer"];
 
 interface MemberPatchBody {
   role?: Role;
+  expectedCurrentRole?: Role;
 }
 
 interface PendingInviteRecord extends Record<string, unknown> {
@@ -66,6 +67,12 @@ export async function PATCH(
   if (!body.role || !MUTABLE_ROLES.includes(body.role)) {
     return NextResponse.json({ error: "Role must be editor or viewer" }, { status: 400 });
   }
+  if (
+    body.expectedCurrentRole !== undefined &&
+    !["owner", "editor", "viewer"].includes(body.expectedCurrentRole)
+  ) {
+    return NextResponse.json({ error: "expectedCurrentRole is invalid" }, { status: 400 });
+  }
 
   const memberResult = await executeQuery<{ user_id: string; role: Role; email: string }>(
     workspaceQueries.findMemberWithEmail(workspace.id, userId)
@@ -73,6 +80,12 @@ export async function PATCH(
   const currentMember = memberResult.rows[0];
   if (!currentMember) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  }
+  if (body.expectedCurrentRole && currentMember.role !== body.expectedCurrentRole) {
+    return NextResponse.json(
+      { error: "Member role changed. Refresh members and retry." },
+      { status: 409 }
+    );
   }
 
   await executeQuery(workspaceQueries.addMember(workspace.id, userId, body.role));
@@ -117,7 +130,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ userId: string }> }
 ) {
   const session = await readSession();
@@ -150,6 +163,25 @@ export async function DELETE(
   const currentMember = memberResult.rows[0];
   if (!currentMember) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  }
+  let rawBody: unknown = null;
+  try {
+    rawBody = await request.json();
+  } catch {
+    rawBody = null;
+  }
+  const body = (rawBody ?? {}) as { expectedCurrentRole?: Role };
+  if (
+    body.expectedCurrentRole !== undefined &&
+    !["owner", "editor", "viewer"].includes(body.expectedCurrentRole)
+  ) {
+    return NextResponse.json({ error: "expectedCurrentRole is invalid" }, { status: 400 });
+  }
+  if (body.expectedCurrentRole && currentMember.role !== body.expectedCurrentRole) {
+    return NextResponse.json(
+      { error: "Member role changed. Refresh members and retry." },
+      { status: 409 }
+    );
   }
 
   await executeQuery(workspaceQueries.removeMember(workspace.id, userId));

@@ -34,6 +34,7 @@ export default async function ResourcesPage() {
     note_text: string | null;
     tags: string[];
     created_at: string;
+    updated_at: string;
   }>(resourceQueries.listByWorkspace(workspace.id));
 
   return <ResourcesWorkspace initialResources={resourcesResult.rows} />;

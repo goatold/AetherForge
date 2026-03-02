@@ -7,6 +7,7 @@ import {
   generateBootstrapConceptPayload,
   validateGenerationPayload
 } from "./concepts";
+import { withRetries } from "./retry";
 
 interface OpenAiChatResponse {
   choices?: Array<{
@@ -165,5 +166,12 @@ export async function generateConceptPayload(
     return generateBootstrapConceptPayload(topic, difficulty);
   }
 
-  return generateFromOpenAi(topic, difficulty);
+  try {
+    return await withRetries(
+      () => generateFromOpenAi(topic, difficulty),
+      { operationName: "concept_generation", maxAttempts: 3, delayMs: 1000 }
+    );
+  } catch {
+    return generateBootstrapConceptPayload(topic, difficulty);
+  }
 }

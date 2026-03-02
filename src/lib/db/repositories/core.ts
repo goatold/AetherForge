@@ -1106,7 +1106,7 @@ export const planMilestoneQueries = {
       text: `
         insert into learning_plan_milestones (learning_plan_id, title, due_date)
         values ($1, $2, $3::date)
-        returning id, learning_plan_id, title, due_date, completed_at
+        returning id, learning_plan_id, title, due_date, completed_at, updated_at
       `,
       values: [learningPlanId, title, dueDate]
     };
@@ -1114,7 +1114,7 @@ export const planMilestoneQueries = {
   listByPlan(learningPlanId: string): SqlQuery {
     return {
       text: `
-        select id, learning_plan_id, title, due_date, completed_at
+        select id, learning_plan_id, title, due_date, completed_at, updated_at
         from learning_plan_milestones
         where learning_plan_id = $1
         order by due_date asc nulls last, title asc
@@ -1125,7 +1125,7 @@ export const planMilestoneQueries = {
   findByIdForUser(milestoneId: string, userId: string): SqlQuery {
     return {
       text: `
-        select lm.id, lm.learning_plan_id, lm.title, lm.due_date, lm.completed_at
+        select lm.id, lm.learning_plan_id, lm.title, lm.due_date, lm.completed_at, lm.updated_at
         from learning_plan_milestones lm
         join learning_plans lp on lp.id = lm.learning_plan_id
         join workspace_members m on m.workspace_id = lp.workspace_id
@@ -1135,28 +1135,44 @@ export const planMilestoneQueries = {
       values: [milestoneId, userId]
     };
   },
-  setCompleted(milestoneId: string, isCompleted: boolean): SqlQuery {
+  setCompletedIfUnchanged(
+    milestoneId: string,
+    isCompleted: boolean,
+    expectedUpdatedAtIso: string
+  ): SqlQuery {
     return {
       text: `
         update learning_plan_milestones
-        set completed_at = case when $2 then now() else null end
-        where id = $1
-        returning id, learning_plan_id, title, due_date, completed_at
+        set
+          completed_at = case when $2 then now() else null end,
+          updated_at = now()
+        where
+          id = $1
+          and date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $3::timestamptz)
+        returning id, learning_plan_id, title, due_date, completed_at, updated_at
       `,
-      values: [milestoneId, isCompleted]
+      values: [milestoneId, isCompleted, expectedUpdatedAtIso]
     };
   },
-  updateDetails(milestoneId: string, title: string, dueDate: string | null): SqlQuery {
+  updateDetailsIfUnchanged(
+    milestoneId: string,
+    title: string,
+    dueDate: string | null,
+    expectedUpdatedAtIso: string
+  ): SqlQuery {
     return {
       text: `
         update learning_plan_milestones
         set
           title = $2,
-          due_date = $3::date
-        where id = $1
-        returning id, learning_plan_id, title, due_date, completed_at
+          due_date = $3::date,
+          updated_at = now()
+        where
+          id = $1
+          and date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $4::timestamptz)
+        returning id, learning_plan_id, title, due_date, completed_at, updated_at
       `,
-      values: [milestoneId, title, dueDate]
+      values: [milestoneId, title, dueDate, expectedUpdatedAtIso]
     };
   },
   removeById(milestoneId: string): SqlQuery {
@@ -1164,7 +1180,7 @@ export const planMilestoneQueries = {
       text: `
         delete from learning_plan_milestones
         where id = $1
-        returning id, learning_plan_id, title, due_date, completed_at
+        returning id, learning_plan_id, title, due_date, completed_at, updated_at
       `,
       values: [milestoneId]
     };
@@ -1183,7 +1199,7 @@ export const resourceQueries = {
       text: `
         insert into resources (workspace_id, title, url, note_text, tags)
         values ($1, $2, $3, $4, $5::text[])
-        returning id, workspace_id, title, url, note_text, tags, created_at
+        returning id, workspace_id, title, url, note_text, tags, created_at, updated_at
       `,
       values: [workspaceId, title, url, noteText, tags]
     };
@@ -1191,7 +1207,7 @@ export const resourceQueries = {
   listByWorkspace(workspaceId: string): SqlQuery {
     return {
       text: `
-        select id, workspace_id, title, url, note_text, tags, created_at
+        select id, workspace_id, title, url, note_text, tags, created_at, updated_at
         from resources
         where workspace_id = $1
         order by created_at desc
@@ -1202,7 +1218,7 @@ export const resourceQueries = {
   listByWorkspaceFiltered(workspaceId: string, searchTerm: string | null, tag: string | null): SqlQuery {
     return {
       text: `
-        select id, workspace_id, title, url, note_text, tags, created_at
+        select id, workspace_id, title, url, note_text, tags, created_at, updated_at
         from resources
         where
           workspace_id = $1
@@ -1224,7 +1240,7 @@ export const resourceQueries = {
   findByIdForUser(resourceId: string, userId: string): SqlQuery {
     return {
       text: `
-        select r.id, r.workspace_id, r.title, r.url, r.note_text, r.tags, r.created_at
+        select r.id, r.workspace_id, r.title, r.url, r.note_text, r.tags, r.created_at, r.updated_at
         from resources r
         join workspace_members m on m.workspace_id = r.workspace_id
         where r.id = $1 and m.user_id = $2
@@ -1233,12 +1249,13 @@ export const resourceQueries = {
       values: [resourceId, userId]
     };
   },
-  updateById(
+  updateByIdIfUnchanged(
     resourceId: string,
     title: string,
     url: string | null,
     noteText: string | null,
-    tags: string[]
+    tags: string[],
+    expectedUpdatedAtIso: string
   ): SqlQuery {
     return {
       text: `
@@ -1247,11 +1264,14 @@ export const resourceQueries = {
           title = $2,
           url = $3,
           note_text = $4,
-          tags = $5::text[]
-        where id = $1
-        returning id, workspace_id, title, url, note_text, tags, created_at
+          tags = $5::text[],
+          updated_at = now()
+        where
+          id = $1
+          and date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $6::timestamptz)
+        returning id, workspace_id, title, url, note_text, tags, created_at, updated_at
       `,
-      values: [resourceId, title, url, noteText, tags]
+      values: [resourceId, title, url, noteText, tags, expectedUpdatedAtIso]
     };
   },
   removeById(resourceId: string): SqlQuery {
@@ -1259,7 +1279,7 @@ export const resourceQueries = {
       text: `
         delete from resources
         where id = $1
-        returning id, workspace_id, title, url, note_text, tags, created_at
+        returning id, workspace_id, title, url, note_text, tags, created_at, updated_at
       `,
       values: [resourceId]
     };

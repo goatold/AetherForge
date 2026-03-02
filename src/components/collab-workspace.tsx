@@ -83,11 +83,15 @@ export function CollabWorkspace({
   const updateMemberRole = (userId: string, role: "editor" | "viewer") => {
     setInfoMessage(null);
     setErrorMessage(null);
+    const currentMemberRole = members.find((member) => member.user_id === userId)?.role;
     startTransition(async () => {
       const response = await fetch(`/api/collab/members/${userId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ role })
+        body: JSON.stringify({
+          role,
+          expectedCurrentRole: currentMemberRole
+        })
       });
       const body = (await response.json().catch(() => null)) as
         | { error?: string; members?: MemberRecord[]; pendingInvites?: PendingInviteRecord[] }
@@ -107,9 +111,14 @@ export function CollabWorkspace({
   const removeMember = (userId: string) => {
     setInfoMessage(null);
     setErrorMessage(null);
+    const currentMemberRole = members.find((member) => member.user_id === userId)?.role;
     startTransition(async () => {
       const response = await fetch(`/api/collab/members/${userId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          expectedCurrentRole: currentMemberRole
+        })
       });
       const body = (await response.json().catch(() => null)) as
         | { error?: string; members?: MemberRecord[]; pendingInvites?: PendingInviteRecord[] }
@@ -231,7 +240,9 @@ export function CollabWorkspace({
 
       <section className="panel">
         <h3>Pending invites</h3>
-        {pendingInvites.length === 0 ? (
+        {!canManage ? (
+          <p>Only workspace owners can view active invite links.</p>
+        ) : pendingInvites.length === 0 ? (
           <p>No active invites.</p>
         ) : (
           <ul>
@@ -248,19 +259,15 @@ export function CollabWorkspace({
                 >
                   Copy invite link
                 </button>
-                {canManage ? (
-                  <>
-                    {" / "}
-                    <button
-                      className="button subtle-button"
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => revokeInvite(invite.id)}
-                    >
-                      Revoke invite
-                    </button>
-                  </>
-                ) : null}
+                {" / "}
+                <button
+                  className="button subtle-button"
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => revokeInvite(invite.id)}
+                >
+                  Revoke invite
+                </button>
               </li>
             ))}
           </ul>
