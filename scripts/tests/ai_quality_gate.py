@@ -87,18 +87,15 @@ def run(base_url: str, iterations: int, min_success_rate: float, require_connect
         concept_generation_path = (
             concept_obj.get("generationPath") if isinstance(concept_obj, dict) else "unknown"
         )
+        concept_provider = concept_obj.get("provider") if isinstance(concept_obj, dict) else None
         concept_ok = concept_status == 200 and isinstance(artifact_id, str) and isinstance(concepts, list) and len(concepts) > 0
-        detail = f"concept_status={concept_status}, concept_generation_path={concept_generation_path}"
+        detail = (
+            f"concept_status={concept_status}, concept_generation_path={concept_generation_path}, "
+            f"concept_provider={concept_provider}"
+        )
 
         if concept_ok and require_connected_provider:
-            artifacts_status, artifacts_body = get_json(opener, f"{base_url}/api/concepts/artifacts")
-            artifacts_obj = json.loads(artifacts_body) if artifacts_body else {}
-            artifacts = artifacts_obj.get("artifacts") if isinstance(artifacts_obj, dict) else None
-            provider = None
-            if artifacts_status == 200 and isinstance(artifacts, list) and artifacts and isinstance(artifacts[0], dict):
-                provider = artifacts[0].get("provider")
-            concept_ok = isinstance(provider, str) and provider not in ("aetherforge-bootstrap", "")
-            detail += f", provider={provider}"
+            concept_ok = isinstance(concept_provider, str) and concept_provider not in ("aetherforge-bootstrap", "")
 
         if not concept_ok:
             results.append(

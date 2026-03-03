@@ -143,7 +143,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       artifactId,
       concepts: insertedConcepts,
-      generationPath: generated.generationPath
+      generationPath: generated.generationPath,
+      provider: payload.provider
     });
   } catch {
     await client.query("rollback");

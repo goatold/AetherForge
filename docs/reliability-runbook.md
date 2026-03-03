@@ -80,7 +80,7 @@ Current tracked job name:
 - `DELETE /api/ai/session` immediately clears active provider connection state; subsequent generation requests should fail with reconnect guidance (`409`).
 - Generation routes (`/api/concepts/generate`, `/api/quiz/generate`) now require an active connected AI provider session.
 - If missing, generation returns `409` with reconnect guidance to `/ai-connect`.
-- Generation responses now include `generationPath` (`browser_driver` or `fallback`) so reliability validation can explicitly separate real browser-driver runs from fallback behavior.
+- Generation responses now include `generationPath` (`browser_driver` or `fallback`) and resolved `provider` attribution so reliability validation can explicitly separate real browser-driver runs from fallback behavior and verify provider lineage deterministically.
 - Browser automation currently has a first implementation for `chatgpt-web`; unsupported providers fall back to deterministic payload generation while preserving provider lineage.
 
 ## Triage Playbook

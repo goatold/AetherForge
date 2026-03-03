@@ -349,11 +349,19 @@ def run(base_url: str):
     )
     concept_obj = parse_json(concept_body)
     artifact_id = concept_obj.get("artifactId") if isinstance(concept_obj, dict) else None
+    connected_concept_provider = concept_obj.get("provider") if isinstance(concept_obj, dict) else None
     checks.append(
         CheckResult(
             "concept_generation_after_connect",
             concept_status == 200 and isinstance(artifact_id, str),
             f"status={concept_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "concept_generation_provider_reflects_session",
+            concept_status == 200 and connected_concept_provider == "chatgpt-web",
+            str(connected_concept_provider),
         )
     )
 
@@ -374,11 +382,19 @@ def run(base_url: str):
     quiz_status, quiz_body = request_json(opener, "POST", f"{base_url}/api/quiz/generate", {})
     quiz_obj = parse_json(quiz_body)
     quiz_id = quiz_obj.get("quizId") if isinstance(quiz_obj, dict) else None
+    quiz_provider = quiz_obj.get("provider") if isinstance(quiz_obj, dict) else None
     checks.append(
         CheckResult(
             "quiz_generation_after_connect",
             quiz_status == 200 and isinstance(quiz_id, str),
             f"status={quiz_status}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "quiz_generation_provider_reflects_session",
+            quiz_status == 200 and quiz_provider == "chatgpt-web",
+            str(quiz_provider),
         )
     )
 
@@ -415,11 +431,21 @@ def run(base_url: str):
     claude_generation_path = (
         claude_concept_obj.get("generationPath") if isinstance(claude_concept_obj, dict) else None
     )
+    claude_concept_provider = (
+        claude_concept_obj.get("provider") if isinstance(claude_concept_obj, dict) else None
+    )
     checks.append(
         CheckResult(
             "concept_generation_path_reports_fallback_for_unsupported_provider",
             claude_concept_status == 200 and claude_generation_path == "fallback",
             f"status={claude_concept_status}, generationPath={claude_generation_path}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "concept_generation_provider_reflects_unsupported_session",
+            claude_concept_status == 200 and claude_concept_provider == "claude-web",
+            str(claude_concept_provider),
         )
     )
 
@@ -429,6 +455,9 @@ def run(base_url: str):
     claude_quiz_generation_path = (
         claude_quiz_obj.get("generationPath") if isinstance(claude_quiz_obj, dict) else None
     )
+    claude_quiz_provider = (
+        claude_quiz_obj.get("provider") if isinstance(claude_quiz_obj, dict) else None
+    )
     checks.append(
         CheckResult(
             "quiz_generation_path_reports_fallback_for_unsupported_provider",
@@ -436,6 +465,15 @@ def run(base_url: str):
             and isinstance(claude_quiz_id, str)
             and claude_quiz_generation_path == "fallback",
             f"status={claude_quiz_status}, generationPath={claude_quiz_generation_path}",
+        )
+    )
+    checks.append(
+        CheckResult(
+            "quiz_generation_provider_reflects_unsupported_session",
+            claude_quiz_status == 200
+            and isinstance(claude_quiz_id, str)
+            and claude_quiz_provider == "claude-web",
+            str(claude_quiz_provider),
         )
     )
 

@@ -390,7 +390,7 @@ Transition AetherForge AI generation from `OPENAI_API_KEY` server API calls to a
 - Completed: expanded connection smoke coverage to assert disconnect semantics (`DELETE /api/ai/session`) re-enable generation gating (`409` reconnect required).
 - Completed: hardened provider-session API contract to reject non-canonical `providerKey` formatting (leading/trailing whitespace).
 - Completed: hardened provider-session API contract to require exact canonical `loginUrl` formatting (including trailing-slash rejection).
-- Completed: added explicit generation-path signaling (`browser_driver` vs `fallback`) on concept/quiz generation responses and quality/smoke reporting for deterministic reliability validation.
+- Completed: added explicit generation-path signaling (`browser_driver` vs `fallback`) plus response-level provider attribution on concept/quiz generation responses, with quality/smoke reporting for deterministic reliability validation.
 - Remaining: implement additional browser drivers and execute OAuth/API provider track.
 
 ### Scope Decisions Captured

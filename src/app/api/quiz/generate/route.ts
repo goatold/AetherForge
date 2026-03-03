@@ -199,7 +199,11 @@ export async function POST(request: Request) {
     }
 
     await client.query("commit");
-    return NextResponse.json({ quizId: quiz.id, generationPath: generated.generationPath });
+    return NextResponse.json({
+      quizId: quiz.id,
+      generationPath: generated.generationPath,
+      provider: generated.payload.provider
+    });
   } catch (error) {
     await client.query("rollback");
     recordError("quiz_generation_persistence", error, { workspaceId: workspace.id });
