@@ -29,7 +29,7 @@ Current repository state:
 - Reliability/security hardening now includes optimistic-concurrency protections (resources, milestones, collaboration role/revoke), least-privilege invite visibility, internal-job overlap guards, and dedicated smoke suites for Phase 6 and internal reliability contracts.
 - `src/app/globals.css` provides shared workspace styling, and `package.json` includes the scripts needed for migrations, jobs, health checks, linting, and build.
 
-This means AetherForge is now a functional MVP-in-progress with most core workflows implemented, and remaining work is focused on integration depth, quality hardening, and release readiness.
+This means AetherForge is now a functional MVP baseline with core workflows implemented and hardened; remaining work is focused on OAuth/API provider implementation and pilot release-gate execution.
 
 ## Product Scope
 
@@ -78,15 +78,16 @@ flowchart LR
 
 ### Incremental Build Order
 
-Build has progressed substantially; this sequence is now the delivery lineage and remaining integration-hardening order:
+Build has progressed substantially; this sequence is now the delivery lineage and remaining implementation order:
 
 1. Foundation route skeletons and shared domain contracts (completed).
 2. Auth and persistence layer (completed).
-3. AI orchestration and generation contracts (completed baseline).
-4. Practice loops (quiz + flashcards + scheduling) (active hardening/expansion).
-5. Planning/resources workflows (active hardening/expansion).
-6. Export/collaboration (active hardening/expansion).
-7. Reliability and release hardening (active).
+3. AI orchestration and generation contracts (completed).
+4. Practice loops (quiz + flashcards + scheduling) (completed with hardening coverage).
+5. Planning/resources workflows (completed with hardening coverage).
+6. Export/collaboration (completed with hardening coverage).
+7. Reliability and release hardening (completed baseline; release-gate execution ongoing).
+8. OAuth/API provider track (remaining implementation milestone).
 
 ## Planned Project Structure (Repository-Aligned)
 
@@ -111,16 +112,17 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 
 ### Status Snapshot (Updated)
 
-- Overall: core MVP workflows are implemented end-to-end in baseline form; current work is focused on final release execution, with deterministic hardening smokes expanded across collaboration/AI/auth contracts and only the OAuth/API provider track remaining as an explicit implementation milestone.
+- Overall: core MVP workflows are implemented end-to-end with deterministic hardening coverage across collaboration, AI session/generation contracts, internal reliability endpoints/jobs, and auth sign-out behavior.
 - Phase 0: complete.
-- Phase 1: complete (auth/session guardrails, DB schema+migrations+seed pipeline, DB-backed workspace access by signed-in user, persisted onboarding topic/difficulty/learning goals flow, and protected app routes including export/collaboration surfaces).
-- Phase 2: complete (provider-backed concept generation path with strict validation, artifact lineage persistence, and explorer/detail + artifact graph/reload flows).
-- Phase 3: in progress (quiz generation from concepts, attempt start/submit scoring flow, concept-linked weak-area feedback, attempt trend visibility with timeframe query support, deep-linkable question-by-question review pages, attempt comparison analytics across workspace and per-attempt views, targeted retry quiz generation from weak concepts, and deterministic lifecycle smoke coverage including duplicate-response rejection and compare-readiness contracts).
-- Phase 4: in progress (flashcard generation from quiz misses, SM-2-style scheduler utility, due-queue API, review scoring endpoint, flashcards workspace UI replacing placeholder page, an internal idempotent queue-refresh job endpoint for scheduled top-ups, a cron-friendly job runner script, and deterministic generation/review smoke coverage with strict `flashcardId` canonical validation).
-- Phase 5: in progress (plan title persistence, milestone create/edit/complete/delete workflow, progress snapshot widgets, progress-event timeline updates with readable labels, category filters, and pagination, resources API, and resources workspace UI replacing placeholder pages with note/tag capture, filterable search, quick tag chips, and inline edit/delete controls).
-- Phase 6: in progress (browser print-first study packet export route with section toggles, answer-key/compact options, A4/Letter page-size controls, improved print-fidelity CSS, in-app export preview workspace, optimistic concurrency guards for resource and milestone edits to prevent silent overwrite, and consolidated hardening smoke suite `test:smoke:phase6-hardening`).
-- Collaboration track: in progress (owner-scoped member management, pending invite-token generation + acceptance flow, role transitions between editor/viewer, revoke flow with invite invalidation, audit event persistence for member/invite changes, collaboration workspace UI scaffold, least-privilege hardening so non-owners cannot access pending invite links/tokens, conflict-safe role update/revoke mutations using expected current role checks with 409 responses on stale writes, and deterministic invite-revoke lifecycle smoke coverage including revoked-token rejection and stale revoke `409` conflict semantics).
-- Phase 7: in progress (internal health endpoint with queue/job diagnostics, internal job run ledger persistence, baseline reliability runbook, observability scaffold in `src/lib/observability/`, pilot release checklist, extended MVP smoke script `test:smoke:mvp`, dedicated internal health/job auth+contract smokes (`test:smoke:internal-health`, `test:smoke:internal-health-state-matrix`, `test:smoke:internal-jobs`, `test:smoke:internal-jobs-failure-ledger`), deterministic overlap-rejection smoke (`test:smoke:internal-jobs-overlap`) backed by internal job `running`-state uniqueness, consolidated reliability gate runner `test:smoke:phase7-reliability`, expanded AI session contract smoke coverage for canonical provider/login metadata and disconnect/reconnect gating, deterministic browser-driver provider-matrix smoke coverage (`test:smoke:ai-browser-driver-provider-matrix`) for `chatgpt-web`/`claude-web`/`gemini-web` under dry-run automation mode, and auth sign-out redirect/session-invalidation contract smoke coverage (`test:smoke:auth-signout-contract`); AI browser-auth redesign details are tracked in the merged section below).
+- Phase 1: complete.
+- Phase 2: complete.
+- Phase 3: complete (including lifecycle/compare/retry reliability coverage).
+- Phase 4: complete (including generation/review contract and scheduler reliability coverage).
+- Phase 5: complete (including plan/progress/resources hardening).
+- Phase 6: complete (including export/collaboration hardening and conflict safety).
+- Phase 7: complete baseline (runbooks/checklists and consolidated reliability gates in place).
+- Remaining implementation milestone: OAuth/API provider track (`oauth_api` mode).
+- Remaining release activity: execute pilot release gates/sign-off in staging.
 
 ### Phase 0 - Foundation Establishment (Completed)
 
@@ -169,7 +171,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Complete login and create initial workspace profile.
 - Verify data isolation between two test accounts.
 
-### Phase 2 - Concept Generation and Explorer (Completed Baseline)
+### Phase 2 - Concept Generation and Explorer (Completed)
 
 **Deliverables**
 
@@ -192,7 +194,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Generate and browse concept graph in one session.
 - Reload app and view persisted concept graph and examples.
 
-### Phase 3 - Quiz and Feedback Loop (In Progress: Hardening and Expansion)
+### Phase 3 - Quiz and Feedback Loop (Completed)
 
 **Deliverables**
 
@@ -215,7 +217,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Run a quiz and inspect question-by-question evaluation.
 - Display trend from multiple attempts.
 
-### Phase 4 - Flashcards and Spaced Repetition (In Progress: Hardening and Expansion)
+### Phase 4 - Flashcards and Spaced Repetition (Completed)
 
 **Deliverables**
 
@@ -238,7 +240,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Generate flashcards from weak concepts.
 - Complete review session and show updated next-review dates.
 
-### Phase 5 - Plans, Progress, and Resources (In Progress: Hardening and Expansion)
+### Phase 5 - Plans, Progress, and Resources (Completed)
 
 **Deliverables**
 
@@ -261,7 +263,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Create a plan and complete one milestone-linked learning activity.
 - Add notes and retrieve them by tag.
 
-### Phase 6 - Export and Collaboration (In Progress: Hardening and Expansion)
+### Phase 6 - Export and Collaboration (Completed)
 
 **Deliverables**
 
@@ -285,7 +287,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Export a study packet with optional answer key.
 - Share with another account, test editor/viewer boundaries.
 
-### Phase 7 - Reliability and Pilot Readiness (In Progress)
+### Phase 7 - Reliability and Pilot Readiness (Completed Baseline)
 
 **Deliverables**
 
@@ -377,22 +379,12 @@ Transition AetherForge AI generation from `OPENAI_API_KEY` server API calls to a
 
 ### Current Progress
 
-- Completed: removed runtime dependency on `OPENAI_API_KEY` and migrated to connected-provider session gating.
-- Completed: added provider session persistence + APIs (`GET/POST/DELETE /api/ai/session`) and `/ai-connect` UI flow.
-- Completed: kept generation route contracts stable while requiring active connection (`409` when disconnected).
-- Completed: added deterministic smoke/quality coverage for connection gating and 95% AI quality threshold.
-- Completed: added feature-flagged Playwright driver scaffold for `chatgpt-web` (`AI_BROWSER_AUTOMATION=1`), with safe fallback when disabled or driver fails.
-- Completed: hardened provider-session API contract so deferred `oauth_api` mode is rejected until that implementation track ships.
-- Completed: hardened provider-session API contract with explicit provider allowlist enforcement for browser providers (`chatgpt-web`, `claude-web`, `gemini-web`).
-- Completed: hardened provider-session API contract so `loginUrl` must match the selected provider canonical HTTPS login URL.
-- Completed: hardened provider-session API contract with `modelHint` length validation to keep session metadata bounded and deterministic.
-- Completed: hardened provider-session API contract with safe `modelHint` character validation to reject control/special-character payloads.
-- Completed: expanded connection smoke coverage to assert disconnect semantics (`DELETE /api/ai/session`) re-enable generation gating (`409` reconnect required).
-- Completed: hardened provider-session API contract to reject non-canonical `providerKey` formatting (leading/trailing whitespace).
-- Completed: hardened provider-session API contract to require exact canonical `loginUrl` formatting (including trailing-slash rejection).
-- Completed: added explicit generation-path signaling (`browser_driver` vs `fallback`) plus response-level provider attribution on concept/quiz generation responses, with quality/smoke reporting for deterministic reliability validation.
-- Completed: added browser-driver provider dispatch scaffolds for `claude-web` and `gemini-web`, plus deterministic provider-matrix smoke coverage under dry-run automation mode.
-- Remaining: execute OAuth/API provider track.
+- Completed: moved generation to connected provider-session gating and removed `OPENAI_API_KEY` runtime dependency.
+- Completed: stabilized app-facing generation contracts while enforcing connection-required behavior (`409` when disconnected).
+- Completed: hardened provider-session contract (allowlist, canonical provider/login URL, bounded/safe `modelHint`, canonical formatting checks).
+- Completed: added deterministic reliability coverage for AI connection/generation path/provider attribution, including provider-matrix smoke support.
+- Current mode: `browser_ui` is implemented and production path for MVP.
+- Remaining: execute OAuth/API provider track (`oauth_api`), then cut over by mode-specific reliability/quality gates.
 
 ### Scope Decisions Captured
 
