@@ -39,8 +39,15 @@ This runbook covers first-response checks for the MVP reliability path.
   - `npm run test:smoke:internal-jobs-overlap`
 - Smoke-check AI provider manual-connection contract:
   - `npm run test:smoke:ai-connection-required`
+- Smoke-check browser-driver provider matrix under deterministic dry-run mode:
+  - Start app with `AI_BROWSER_AUTOMATION=1 AI_BROWSER_AUTOMATION_DRY_RUN=1`
+  - Run `npm run test:smoke:ai-browser-driver-provider-matrix`
 - Smoke-check flashcards generation/review reliability contract:
   - `npm run test:smoke:flashcards-generation-review`
+- Smoke-check auth sign-out redirect/session-invalidation contract:
+  - `npm run test:smoke:auth-signout-contract`
+- Smoke-check collaboration invite revoke lifecycle contract:
+  - `npm run test:smoke:collab-invite-revoke`
 - Run consolidated Phase 7 reliability smoke gate:
   - `npm run test:smoke:phase7-reliability`
 - Run AI schema quality gate (95% minimum, real provider):
@@ -94,7 +101,7 @@ Current tracked job name:
 - Generation routes (`/api/concepts/generate`, `/api/quiz/generate`) now require an active connected AI provider session.
 - If missing, generation returns `409` with reconnect guidance to `/ai-connect`.
 - Generation responses now include `generationPath` (`browser_driver` or `fallback`) and resolved `provider` attribution so reliability validation can explicitly separate real browser-driver runs from fallback behavior and verify provider lineage deterministically.
-- Browser automation currently has a first implementation for `chatgpt-web`; unsupported providers fall back to deterministic payload generation while preserving provider lineage.
+- Browser automation now includes provider-driver dispatch for `chatgpt-web`, `claude-web`, and `gemini-web`, with deterministic dry-run mode (`AI_BROWSER_AUTOMATION_DRY_RUN=1`) available for stable provider-matrix contract validation.
 
 ## Flashcards Review Contract
 
@@ -103,6 +110,20 @@ Current tracked job name:
 - `flashcardId` must be canonical (no leading/trailing whitespace) and must be a valid UUID.
 - Invalid `flashcardId` shape returns `400` instead of propagating DB errors as `500`.
 - `recallScore` must be numeric in range `0..5`.
+
+## Collaboration Invite Revoke Contract
+
+- Endpoint: `DELETE /api/collab/invites/:inviteId`
+- Auth: signed-in app session.
+- Unknown invite ID remains hidden as `404` (`Active invite not found`).
+- Revoked/accepted/expired stale invite state returns `409` (`Invite is no longer active`) to expose conflict-safe lifecycle handling for owners.
+- Revoked invite tokens are rejected by `POST /api/collab/invites/accept` with `410` (`Invite was revoked`).
+
+## Auth Sign-Out Contract
+
+- Endpoint: `POST /api/auth/sign-out`
+- Returns redirect `303` to `/sign-in`.
+- Clearing session cookie must immediately revoke access to authenticated API routes (for example `GET /api/workspace` returns `401` after sign-out).
 
 ## Triage Playbook
 

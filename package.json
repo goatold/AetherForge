@@ -18,9 +18,11 @@
     "test:smoke:collab-least-privilege": "python3 scripts/tests/collab_least_privilege_smoke.py",
     "test:smoke:collab-role-conflict": "python3 scripts/tests/collab_role_conflict_smoke.py",
     "test:smoke:collab-revoke-conflict": "python3 scripts/tests/collab_revoke_conflict_smoke.py",
+    "test:smoke:collab-invite-revoke": "python3 scripts/tests/collab_invite_revoke_smoke.py",
     "test:smoke:phase6-hardening": "bash scripts/tests/run_phase6_hardening_smoke.sh",
     "test:smoke:phase7-reliability": "bash scripts/tests/run_phase7_reliability_smoke.sh",
     "test:smoke:ai-connection-required": "python3 scripts/tests/ai_connection_required_smoke.py",
+    "test:smoke:ai-browser-driver-provider-matrix": "python3 scripts/tests/ai_browser_driver_provider_matrix_smoke.py",
     "test:smoke:quiz-attempt-lifecycle": "python3 scripts/tests/quiz_attempt_lifecycle_smoke.py",
     "test:quality:ai-schema": "python3 scripts/tests/ai_quality_gate.py --min-success-rate 95 --iterations 20 --require-connected-provider",
     "test:smoke:internal-health": "python3 scripts/tests/internal_health_smoke.py",
@@ -28,7 +30,8 @@
     "test:smoke:internal-jobs": "python3 scripts/tests/internal_jobs_smoke.py",
     "test:smoke:internal-jobs-failure-ledger": "python3 scripts/tests/internal_jobs_failure_ledger_smoke.py",
     "test:smoke:internal-jobs-overlap": "python3 scripts/tests/internal_jobs_overlap_smoke.py",
-    "test:smoke:flashcards-generation-review": "python3 scripts/tests/flashcards_generation_review_smoke.py"
+    "test:smoke:flashcards-generation-review": "python3 scripts/tests/flashcards_generation_review_smoke.py",
+    "test:smoke:auth-signout-contract": "python3 scripts/tests/auth_signout_contract_smoke.py"
   },
   "dependencies": {
     "next": "^15.1.0",

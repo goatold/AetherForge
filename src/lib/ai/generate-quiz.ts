@@ -8,7 +8,7 @@ import {
   generateBootstrapQuizPayload,
   validateQuizGenerationPayload
 } from "./quiz";
-import { runChatGptWebPrompt } from "./browser/chatgpt-web";
+import { runBrowserProviderPrompt } from "./browser/providers";
 import { withRetries } from "./retry";
 import type { AiGenerationPath } from "./generate-concepts";
 
@@ -64,10 +64,8 @@ async function generateViaBrowserDriver(
   concepts: QuizGenerationConceptInput[],
   session: AiProviderSession
 ): Promise<QuizGenerationPayload> {
-  if (session.providerKey !== "chatgpt-web") {
-    throw new Error(`Browser driver not yet implemented for provider: ${session.providerKey}`);
-  }
-  const rawJson = await runChatGptWebPrompt(
+  const rawJson = await runBrowserProviderPrompt(
+    session.providerKey as "chatgpt-web" | "claude-web" | "gemini-web",
     session.userId,
     buildBrowserPrompt(topic, difficulty, concepts)
   );

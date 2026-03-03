@@ -8,7 +8,7 @@ import {
   generateBootstrapConceptPayload,
   validateGenerationPayload
 } from "./concepts";
-import { runChatGptWebPrompt } from "./browser/chatgpt-web";
+import { runBrowserProviderPrompt } from "./browser/providers";
 import { withRetries } from "./retry";
 
 const browserAutomationEnabled = () => process.env.AI_BROWSER_AUTOMATION === "1";
@@ -41,10 +41,11 @@ async function generateViaBrowserDriver(
   difficulty: DifficultyLevel,
   session: AiProviderSession
 ): Promise<GenerationPayload> {
-  if (session.providerKey !== "chatgpt-web") {
-    throw new Error(`Browser driver not yet implemented for provider: ${session.providerKey}`);
-  }
-  const rawJson = await runChatGptWebPrompt(session.userId, buildBrowserPrompt(topic, difficulty));
+  const rawJson = await runBrowserProviderPrompt(
+    session.providerKey as "chatgpt-web" | "claude-web" | "gemini-web",
+    session.userId,
+    buildBrowserPrompt(topic, difficulty)
+  );
   const nodes = parseNodesFromModel(rawJson);
   if (!nodes) {
     throw new Error("Browser provider response could not be parsed as concept JSON.");

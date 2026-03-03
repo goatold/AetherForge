@@ -16,4 +16,7 @@ python3 scripts/tests/collab_role_conflict_smoke.py "$@"
 echo "[phase6] collaboration revoke conflict"
 python3 scripts/tests/collab_revoke_conflict_smoke.py "$@"
 
+echo "[phase6] collaboration invite revoke contract"
+python3 scripts/tests/collab_invite_revoke_smoke.py "$@"
+
 echo "PHASE6_HARDENING_SMOKE_PASS"

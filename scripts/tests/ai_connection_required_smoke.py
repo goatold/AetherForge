@@ -398,7 +398,7 @@ def run(base_url: str):
         )
     )
 
-    # Connect an unsupported browser driver provider and ensure generation explicitly reports fallback path.
+    # Connect an alternate provider and ensure generation reports an explicit path with correct attribution.
     request_json(opener, "DELETE", f"{base_url}/api/ai/session")
     claude_connect_status, claude_connect_body = request_json(
         opener,
@@ -436,14 +436,14 @@ def run(base_url: str):
     )
     checks.append(
         CheckResult(
-            "concept_generation_path_reports_fallback_for_unsupported_provider",
-            claude_concept_status == 200 and claude_generation_path == "fallback",
+            "concept_generation_path_reports_explicit_path_for_alternate_provider",
+            claude_concept_status == 200 and claude_generation_path in ("browser_driver", "fallback"),
             f"status={claude_concept_status}, generationPath={claude_generation_path}",
         )
     )
     checks.append(
         CheckResult(
-            "concept_generation_provider_reflects_unsupported_session",
+            "concept_generation_provider_reflects_alternate_session",
             claude_concept_status == 200 and claude_concept_provider == "claude-web",
             str(claude_concept_provider),
         )
@@ -460,16 +460,16 @@ def run(base_url: str):
     )
     checks.append(
         CheckResult(
-            "quiz_generation_path_reports_fallback_for_unsupported_provider",
+            "quiz_generation_path_reports_explicit_path_for_alternate_provider",
             claude_quiz_status == 200
             and isinstance(claude_quiz_id, str)
-            and claude_quiz_generation_path == "fallback",
+            and claude_quiz_generation_path in ("browser_driver", "fallback"),
             f"status={claude_quiz_status}, generationPath={claude_quiz_generation_path}",
         )
     )
     checks.append(
         CheckResult(
-            "quiz_generation_provider_reflects_unsupported_session",
+            "quiz_generation_provider_reflects_alternate_session",
             claude_quiz_status == 200
             and isinstance(claude_quiz_id, str)
             and claude_quiz_provider == "claude-web",

@@ -53,12 +53,15 @@ Use this checklist before cutting a pilot/MVP release. Aligns with Release Gates
 | Internal jobs failure-ledger smoke | `npm run test:smoke:internal-jobs-failure-ledger` |
 | Quiz attempt lifecycle smoke | `npm run test:smoke:quiz-attempt-lifecycle` |
 | Flashcards generation/review smoke | `npm run test:smoke:flashcards-generation-review` |
+| Collaboration invite revoke smoke | `npm run test:smoke:collab-invite-revoke` |
 | Smoke test | `npm run test:smoke:pre-phase3` (optional: extended MVP smoke) |
 | Phase 6 hardening smoke | `npm run test:smoke:phase6-hardening` |
 | Phase 7 reliability smoke | `npm run test:smoke:phase7-reliability` |
 | AI manual connection smoke | `npm run test:smoke:ai-connection-required` |
+| AI browser-driver provider matrix smoke (dry-run mode) | `AI_BROWSER_AUTOMATION=1 AI_BROWSER_AUTOMATION_DRY_RUN=1 npm run test:smoke:ai-browser-driver-provider-matrix -- --base-url http://localhost:<port>` |
 | AI schema quality gate (95%) | `npm run test:quality:ai-schema` |
 | Internal jobs overlap smoke | `npm run test:smoke:internal-jobs-overlap` |
+| Auth sign-out contract smoke | `npm run test:smoke:auth-signout-contract` |
 | Migrations | `npm run db:migrate` (staging DB) |
 
 ---

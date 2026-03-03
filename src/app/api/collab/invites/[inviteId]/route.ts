@@ -46,11 +46,11 @@ export async function DELETE(
     return NextResponse.json({ error: "inviteId is required" }, { status: 400 });
   }
 
-  const activeInviteResult = await executeQuery<PendingInviteRecord>(
-    workspaceQueries.findActiveInviteById(workspace.id, inviteId)
+  const inviteResult = await executeQuery<PendingInviteRecord>(
+    workspaceQueries.findInviteById(workspace.id, inviteId)
   );
-  const activeInvite = activeInviteResult.rows[0];
-  if (!activeInvite) {
+  const invite = inviteResult.rows[0];
+  if (!invite) {
     return NextResponse.json({ error: "Active invite not found" }, { status: 404 });
   }
 

@@ -327,6 +327,32 @@ export const workspaceQueries = {
       values: [workspaceId, inviteId]
     };
   },
+  findInviteById(workspaceId: string, inviteId: string): SqlQuery {
+    return {
+      text: `
+        select
+          i.id,
+          i.workspace_id,
+          i.invited_email,
+          i.role,
+          i.token,
+          i.invited_by_user_id,
+          i.expires_at,
+          i.accepted_at,
+          i.accepted_by_user_id,
+          i.revoked_at,
+          i.revoked_by_user_id,
+          i.created_at,
+          i.updated_at
+        from workspace_member_invites i
+        where
+          i.workspace_id = $1
+          and i.id = $2
+        limit 1
+      `,
+      values: [workspaceId, inviteId]
+    };
+  },
   revokeInvite(inviteId: string, revokedByUserId: string): SqlQuery {
     return {
       text: `
