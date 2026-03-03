@@ -30,6 +30,9 @@ python3 scripts/tests/internal_health_state_matrix_smoke.py "${COMMON_ARGS[@]}"
 echo "[phase7] internal jobs contract"
 python3 scripts/tests/internal_jobs_smoke.py "${COMMON_ARGS[@]}"
 
+echo "[phase7] internal jobs failure-ledger contract"
+python3 scripts/tests/internal_jobs_failure_ledger_smoke.py "${COMMON_ARGS[@]}"
+
 echo "[phase7] internal jobs overlap contract"
 python3 scripts/tests/internal_jobs_overlap_smoke.py "${COMMON_ARGS[@]}" --hold-ms "$HOLD_MS"
 

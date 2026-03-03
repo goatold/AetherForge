@@ -66,6 +66,18 @@ export async function POST(request: Request, { params }: AttemptRouteProps) {
   if (!Array.isArray(body.responses)) {
     return NextResponse.json({ error: "responses must be an array" }, { status: 400 });
   }
+  for (const response of body.responses) {
+    if (!response || typeof response.questionId !== "string" || response.questionId.trim().length === 0) {
+      return NextResponse.json({ error: "Each response must include a valid questionId." }, { status: 400 });
+    }
+  }
+  const uniqueQuestionIds = new Set(body.responses.map((response) => response.questionId));
+  if (uniqueQuestionIds.size !== body.responses.length) {
+    return NextResponse.json(
+      { error: "Duplicate questionId values are not allowed in responses." },
+      { status: 400 }
+    );
+  }
 
   const attemptResult = await executeQuery<{
     id: string;

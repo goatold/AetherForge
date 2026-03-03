@@ -33,6 +33,8 @@ This runbook covers first-response checks for the MVP reliability path.
   - `npm run job:flashcards:refresh`
 - Smoke-check internal job auth + response contract:
   - `npm run test:smoke:internal-jobs`
+- Smoke-check internal job failure-ledger contract:
+  - `npm run test:smoke:internal-jobs-failure-ledger`
 - Smoke-check internal job overlap rejection contract:
   - `npm run test:smoke:internal-jobs-overlap`
 - Smoke-check AI provider manual-connection contract:
@@ -67,6 +69,9 @@ The `internal_job_runs` table records internal job execution lifecycle:
 - `running` at job start.
 - `succeeded` on completion with result payload.
 - `failed` on exception with captured error message.
+- Deterministic failure smoke mode (token-authenticated):
+  - `POST /api/internal/jobs/flashcards/refresh?testMode=force_failure`
+  - Forces a controlled run failure to validate `running -> failed` ledger transitions and failure response contracts.
 
 Current tracked job name:
 

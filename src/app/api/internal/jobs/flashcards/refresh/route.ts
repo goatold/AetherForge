@@ -7,6 +7,7 @@ const MAX_WORKSPACES_PER_RUN = 100;
 const MAX_NEW_FLASHCARDS_PER_WORKSPACE = 8;
 const JOB_NAME = "flashcards_queue_refresh";
 const MAX_HOLD_MS = 15000;
+type JobTestMode = "force_failure";
 
 const authorized = (request: Request): boolean => {
   const token = process.env.INTERNAL_JOB_TOKEN;
@@ -42,6 +43,10 @@ const isDryRun = (request: Request): boolean => {
   const raw = new URL(request.url).searchParams.get("dryRun");
   return raw === "1" || raw === "true";
 };
+const parseTestMode = (request: Request): JobTestMode | null => {
+  const raw = new URL(request.url).searchParams.get("testMode");
+  return raw === "force_failure" ? raw : null;
+};
 
 const isUniqueViolation = (error: unknown): boolean =>
   typeof error === "object" &&
@@ -76,10 +81,14 @@ export async function POST(request: Request) {
   const runId = startedRun.rows[0]?.id;
   const holdMs = parseHoldMs(request);
   const dryRun = isDryRun(request);
+  const testMode = parseTestMode(request);
 
   try {
     if (holdMs > 0) {
       await sleep(holdMs);
+    }
+    if (testMode === "force_failure") {
+      throw new Error("Simulated internal job failure for deterministic smoke testing.");
     }
 
     if (dryRun) {
