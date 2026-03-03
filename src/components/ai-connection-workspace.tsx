@@ -17,10 +17,16 @@ interface AiConnectionWorkspaceProps {
   initialSession: AiSessionView | null;
 }
 
-const PROVIDERS = [
+const BROWSER_PROVIDERS = [
   { key: "chatgpt-web", label: "ChatGPT Web", loginUrl: "https://chatgpt.com" },
   { key: "claude-web", label: "Claude Web", loginUrl: "https://claude.ai" },
   { key: "gemini-web", label: "Gemini Web", loginUrl: "https://gemini.google.com" }
+] as const;
+
+const OAUTH_PROVIDERS = [
+  { key: "openai", label: "OpenAI API" },
+  { key: "anthropic", label: "Anthropic API" },
+  { key: "google", label: "Google AI API" }
 ] as const;
 
 export function AiConnectionWorkspace({
@@ -30,14 +36,18 @@ export function AiConnectionWorkspace({
   const [isPending, startTransition] = useTransition();
   const [connected, setConnected] = useState(initialConnected);
   const [session, setSession] = useState<AiSessionView | null>(initialSession);
-  const [providerKey, setProviderKey] = useState<string>(PROVIDERS[0]!.key);
-  const [modelHint, setModelHint] = useState("web-default");
+  
+  // Browser UI state
+  const [browserProviderKey, setBrowserProviderKey] = useState<string>(BROWSER_PROVIDERS[0]!.key);
+  const [browserModelHint, setBrowserModelHint] = useState("web-default");
+  
+  // General state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const selectedProvider = PROVIDERS.find((item) => item.key === providerKey) ?? PROVIDERS[0]!;
+  const selectedBrowserProvider = BROWSER_PROVIDERS.find((item) => item.key === browserProviderKey) ?? BROWSER_PROVIDERS[0]!;
 
-  const connect = () => {
+  const connectBrowser = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
     startTransition(async () => {
@@ -45,10 +55,10 @@ export function AiConnectionWorkspace({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          providerKey,
+          providerKey: browserProviderKey,
           mode: "browser_ui",
-          modelHint: modelHint.trim() || null,
-          loginUrl: selectedProvider.loginUrl
+          modelHint: browserModelHint.trim() || null,
+          loginUrl: selectedBrowserProvider.loginUrl
         })
       });
       const body = (await response.json().catch(() => null)) as
@@ -60,7 +70,7 @@ export function AiConnectionWorkspace({
       }
       setConnected(true);
       setSession(body.session ?? null);
-      setSuccessMessage("AI provider connected.");
+      setSuccessMessage("AI provider connected (Browser Mode).");
     });
   };
 
@@ -82,61 +92,97 @@ export function AiConnectionWorkspace({
     });
   };
 
+  const connectOAuth = (providerKey: string) => {
+    window.location.href = `/api/auth/oauth/authorize?provider=${providerKey}`;
+  };
+
   return (
-    <div className="panel">
-      <h2>AI provider connection</h2>
-      <p>
-        Log in to your AI provider in a separate browser tab, then mark the provider as connected
-        here to enable concept and quiz generation.
-      </p>
-      <p>
-        Browser automation executes only when server env <code>AI_BROWSER_AUTOMATION=1</code> is
-        enabled; otherwise generation uses deterministic fallback payloads with provider lineage.
-      </p>
+    <div className="stack">
+      <div className="panel">
+        <h2>Active Connection</h2>
+        <p>Status: <strong>{connected ? "Connected" : "Not connected"}</strong></p>
+        
+        {session ? (
+          <div className="box">
+            <p><strong>Provider:</strong> {session.providerKey}</p>
+            <p><strong>Mode:</strong> {session.mode === "oauth_api" ? "Official API (OAuth)" : "Browser Automation"}</p>
+            <p><strong>Model Hint:</strong> {session.modelHint ?? "Default"}</p>
+            <p><strong>Connected At:</strong> {session.connectedAt ? new Date(session.connectedAt).toLocaleString() : "Unknown"}</p>
+            
+            <div className="row" style={{ marginTop: "1rem" }}>
+              <button className="button subtle-button" type="button" disabled={isPending} onClick={disconnect}>
+                Disconnect
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p>No active AI provider connection. Please connect using one of the methods below.</p>
+        )}
 
-      <label htmlFor="provider">Provider</label>
-      <select
-        id="provider"
-        value={providerKey}
-        disabled={isPending}
-        onChange={(event) => setProviderKey(event.target.value)}
-      >
-        {PROVIDERS.map((provider) => (
-          <option key={provider.key} value={provider.key}>
-            {provider.label}
-          </option>
-        ))}
-      </select>
-
-      <label htmlFor="model-hint">Model hint</label>
-      <input
-        id="model-hint"
-        value={modelHint}
-        disabled={isPending}
-        onChange={(event) => setModelHint(event.target.value)}
-        placeholder="e.g. gpt-4o, claude-3.5-sonnet"
-      />
-
-      <div className="row">
-        <a className="button subtle-button" href={selectedProvider.loginUrl} target="_blank" rel="noreferrer">
-          Open provider login
-        </a>
-        <button className="button" type="button" disabled={isPending} onClick={connect}>
-          {isPending ? "Connecting..." : "Mark connected"}
-        </button>
-        <button className="button subtle-button" type="button" disabled={isPending} onClick={disconnect}>
-          Disconnect
-        </button>
+        {errorMessage ? <p role="alert" className="error-text">{errorMessage}</p> : null}
+        {successMessage ? <p className="success-text">{successMessage}</p> : null}
       </div>
 
-      <p>Status: {connected ? "Connected" : "Not connected"}</p>
-      {session ? (
-        <p>
-          Active session: {session.providerKey} / {session.modelHint ?? "web-default"}
-        </p>
-      ) : null}
-      {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-      {successMessage ? <p>{successMessage}</p> : null}
+      {!connected && (
+        <>
+          <div className="panel">
+            <h3>Option 1: Official API (Recommended)</h3>
+            <p>Connect securely via OAuth. Requires your own API credits/subscription.</p>
+            <div className="row">
+              {OAUTH_PROVIDERS.map((provider) => (
+                <button 
+                  key={provider.key} 
+                  className="button" 
+                  onClick={() => connectOAuth(provider.key)}
+                  disabled={isPending}
+                >
+                  Connect {provider.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Option 2: Browser Automation (Experimental)</h3>
+            <p>
+              Uses browser automation to drive a logged-in web session. 
+              Requires <code>AI_BROWSER_AUTOMATION=1</code> on server.
+            </p>
+
+            <label htmlFor="browser-provider">Provider</label>
+            <select
+              id="browser-provider"
+              value={browserProviderKey}
+              disabled={isPending}
+              onChange={(event) => setBrowserProviderKey(event.target.value)}
+            >
+              {BROWSER_PROVIDERS.map((provider) => (
+                <option key={provider.key} value={provider.key}>
+                  {provider.label}
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="browser-model-hint">Model hint</label>
+            <input
+              id="browser-model-hint"
+              value={browserModelHint}
+              disabled={isPending}
+              onChange={(event) => setBrowserModelHint(event.target.value)}
+              placeholder="e.g. gpt-4o, claude-3.5-sonnet"
+            />
+
+            <div className="row" style={{ marginTop: "1rem" }}>
+              <a className="button subtle-button" href={selectedBrowserProvider.loginUrl} target="_blank" rel="noreferrer">
+                Open Login Page
+              </a>
+              <button className="button" type="button" disabled={isPending} onClick={connectBrowser}>
+                {isPending ? "Connecting..." : "Mark Connected"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

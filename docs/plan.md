@@ -121,7 +121,7 @@ Build has progressed substantially; this sequence is now the delivery lineage an
 - Phase 5: complete (including plan/progress/resources hardening).
 - Phase 6: complete (including export/collaboration hardening and conflict safety).
 - Phase 7: complete baseline (runbooks/checklists and consolidated reliability gates in place).
-- Remaining implementation milestone: OAuth/API provider track (`oauth_api` mode).
+- Remaining implementation milestone: OAuth/API provider track (`oauth_api` mode) - Backend and UI implemented.
 - Remaining release activity: execute pilot release gates/sign-off in staging.
 
 ### Phase 0 - Foundation Establishment (Completed)

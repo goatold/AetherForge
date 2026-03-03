@@ -9,12 +9,13 @@ import {
   validateQuizGenerationPayload
 } from "./quiz";
 import { runBrowserProviderPrompt } from "./browser/providers";
+import { runOAuthProviderPrompt } from "./api/providers";
 import { withRetries } from "./retry";
 import type { AiGenerationPath } from "./generate-concepts";
 
 const browserAutomationEnabled = () => process.env.AI_BROWSER_AUTOMATION === "1";
 
-const buildBrowserPrompt = (
+const buildPrompt = (
   topic: string,
   difficulty: DifficultyLevel,
   concepts: QuizGenerationConceptInput[]
@@ -39,7 +40,9 @@ const parsePayload = (
   defaultModel: string
 ): QuizGenerationPayload | null => {
   try {
-    const parsed = JSON.parse(content) as {
+    // Clean markdown code blocks if present
+    const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(cleanContent) as {
       title?: string;
       questions?: QuizGenerationPayload["questions"];
     };
@@ -67,7 +70,7 @@ async function generateViaBrowserDriver(
   const rawJson = await runBrowserProviderPrompt(
     session.providerKey as "chatgpt-web" | "claude-web" | "gemini-web",
     session.userId,
-    buildBrowserPrompt(topic, difficulty, concepts)
+    buildPrompt(topic, difficulty, concepts)
   );
   const parsed = parsePayload(rawJson, session.providerKey, session.modelHint ?? "chatgpt-web-ui");
   if (!parsed) {
@@ -80,13 +83,52 @@ async function generateViaBrowserDriver(
   return validated;
 }
 
+async function generateViaOAuthApi(
+  topic: string,
+  difficulty: DifficultyLevel,
+  concepts: QuizGenerationConceptInput[],
+  session: AiProviderSession
+): Promise<QuizGenerationPayload> {
+  const rawJson = await runOAuthProviderPrompt(
+    session.providerKey,
+    session.userId,
+    buildPrompt(topic, difficulty, concepts)
+  );
+  const parsed = parsePayload(rawJson, session.providerKey, session.modelHint ?? `${session.providerKey}-api`);
+  if (!parsed) {
+    throw new Error("OAuth provider response could not be parsed as quiz JSON.");
+  }
+  const validated = validateQuizGenerationPayload(parsed);
+  if (!validated) {
+    throw new Error("OAuth provider response failed quiz schema validation.");
+  }
+  return validated;
+}
+
 export async function generateQuizPayload(
   topic: string,
   difficulty: DifficultyLevel,
   concepts: QuizGenerationConceptInput[],
   session: AiProviderSession
 ): Promise<{ payload: QuizGenerationPayload; generationPath: AiGenerationPath }> {
-  if (browserAutomationEnabled()) {
+  if (session.mode === "oauth_api") {
+    try {
+      const payload = await withRetries(
+        () => generateViaOAuthApi(topic, difficulty, concepts, session),
+        { operationName: "quiz_generation_oauth_api", maxAttempts: 2, delayMs: 500 }
+      );
+      return { payload, generationPath: "oauth_api" };
+    } catch (error) {
+      recordError("quiz_generation_oauth_api", error, {
+        providerKey: session.providerKey,
+        mode: session.mode
+      });
+      logger.warn("OAuth API quiz generation failed; using fallback payload", {
+        providerKey: session.providerKey
+      });
+      // Fall through to fallback
+    }
+  } else if (browserAutomationEnabled()) {
     try {
       const payload = await withRetries(
         () => generateViaBrowserDriver(topic, difficulty, concepts, session),

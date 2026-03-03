@@ -9,12 +9,13 @@ import {
   validateGenerationPayload
 } from "./concepts";
 import { runBrowserProviderPrompt } from "./browser/providers";
+import { runOAuthProviderPrompt } from "./api/providers";
 import { withRetries } from "./retry";
 
 const browserAutomationEnabled = () => process.env.AI_BROWSER_AUTOMATION === "1";
-export type AiGenerationPath = "browser_driver" | "fallback";
+export type AiGenerationPath = "browser_driver" | "oauth_api" | "fallback";
 
-const buildBrowserPrompt = (topic: string, difficulty: DifficultyLevel) =>
+const buildPrompt = (topic: string, difficulty: DifficultyLevel) =>
   [
     "Return JSON only.",
     "Shape:",
@@ -29,7 +30,9 @@ const buildBrowserPrompt = (topic: string, difficulty: DifficultyLevel) =>
 
 const parseNodesFromModel = (content: string): ConceptNodeInput[] | null => {
   try {
-    const parsed = JSON.parse(content) as { nodes?: ConceptNodeInput[] };
+    // Clean markdown code blocks if present
+    const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(cleanContent) as { nodes?: ConceptNodeInput[] };
     return Array.isArray(parsed.nodes) ? parsed.nodes : null;
   } catch {
     return null;
@@ -44,7 +47,7 @@ async function generateViaBrowserDriver(
   const rawJson = await runBrowserProviderPrompt(
     session.providerKey as "chatgpt-web" | "claude-web" | "gemini-web",
     session.userId,
-    buildBrowserPrompt(topic, difficulty)
+    buildPrompt(topic, difficulty)
   );
   const nodes = parseNodesFromModel(rawJson);
   if (!nodes) {
@@ -63,12 +66,56 @@ async function generateViaBrowserDriver(
   return validated;
 }
 
+async function generateViaOAuthApi(
+  topic: string,
+  difficulty: DifficultyLevel,
+  session: AiProviderSession
+): Promise<GenerationPayload> {
+  const rawJson = await runOAuthProviderPrompt(
+    session.providerKey,
+    session.userId,
+    buildPrompt(topic, difficulty)
+  );
+  const nodes = parseNodesFromModel(rawJson);
+  if (!nodes) {
+    throw new Error("OAuth provider response could not be parsed as concept JSON.");
+  }
+  const payload: GenerationPayload = {
+    artifactVersion: 1,
+    provider: session.providerKey,
+    model: session.modelHint ?? `${session.providerKey}-api`,
+    nodes
+  };
+  const validated = validateGenerationPayload(payload);
+  if (!validated) {
+    throw new Error("OAuth provider response failed concept schema validation.");
+  }
+  return validated;
+}
+
 export async function generateConceptPayload(
   topic: string,
   difficulty: DifficultyLevel,
   session: AiProviderSession
 ): Promise<{ payload: GenerationPayload; generationPath: AiGenerationPath }> {
-  if (browserAutomationEnabled()) {
+  if (session.mode === "oauth_api") {
+    try {
+      const payload = await withRetries(
+        () => generateViaOAuthApi(topic, difficulty, session),
+        { operationName: "concept_generation_oauth_api", maxAttempts: 2, delayMs: 500 }
+      );
+      return { payload, generationPath: "oauth_api" };
+    } catch (error) {
+      recordError("concept_generation_oauth_api", error, {
+        providerKey: session.providerKey,
+        mode: session.mode
+      });
+      logger.warn("OAuth API concept generation failed; using fallback payload", {
+        providerKey: session.providerKey
+      });
+      // Fall through to fallback
+    }
+  } else if (browserAutomationEnabled()) {
     try {
       const payload = await withRetries(
         () => generateViaBrowserDriver(topic, difficulty, session),

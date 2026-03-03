@@ -577,7 +577,12 @@ export const aiProviderSessionQueries = {
           connected_at,
           disconnected_at,
           created_at,
-          updated_at
+          updated_at,
+          access_token_enc,
+          refresh_token_enc,
+          expires_at,
+          scopes,
+          token_type
         from ai_provider_sessions
         where user_id = $1 and status = 'connected'
         order by updated_at desc
@@ -633,9 +638,79 @@ export const aiProviderSessionQueries = {
           connected_at,
           disconnected_at,
           created_at,
-          updated_at
+          updated_at,
+          access_token_enc,
+          refresh_token_enc,
+          expires_at,
+          scopes,
+          token_type
       `,
       values: [userId, providerKey, mode, modelHint, loginUrl, metadataJson]
+    };
+  },
+  upsertOAuthConnected(
+    userId: string,
+    providerKey: string,
+    accessTokenEnc: string,
+    refreshTokenEnc: string | null,
+    expiresAt: string | null,
+    scopes: string[] | null,
+    tokenType: string | null,
+    metadataJson: string
+  ): SqlQuery {
+    return {
+      text: `
+        insert into ai_provider_sessions (
+          user_id,
+          provider_key,
+          mode,
+          status,
+          access_token_enc,
+          refresh_token_enc,
+          expires_at,
+          scopes,
+          token_type,
+          metadata_json,
+          connected_at,
+          disconnected_at,
+          updated_at
+        )
+        values ($1, $2, 'oauth_api', 'connected', $3, $4, $5::timestamptz, $6::text[], $7, $8::jsonb, now(), null, now())
+        on conflict (user_id)
+        where status = 'connected'
+        do update
+          set
+            provider_key = excluded.provider_key,
+            mode = excluded.mode,
+            access_token_enc = excluded.access_token_enc,
+            refresh_token_enc = excluded.refresh_token_enc,
+            expires_at = excluded.expires_at,
+            scopes = excluded.scopes,
+            token_type = excluded.token_type,
+            metadata_json = excluded.metadata_json,
+            connected_at = now(),
+            disconnected_at = null,
+            updated_at = now()
+        returning
+          id,
+          user_id,
+          provider_key,
+          mode,
+          status,
+          model_hint,
+          login_url,
+          metadata_json,
+          connected_at,
+          disconnected_at,
+          created_at,
+          updated_at,
+          access_token_enc,
+          refresh_token_enc,
+          expires_at,
+          scopes,
+          token_type
+      `,
+      values: [userId, providerKey, accessTokenEnc, refreshTokenEnc, expiresAt, scopes, tokenType, metadataJson]
     };
   },
   disconnectByUser(userId: string): SqlQuery {
@@ -659,7 +734,12 @@ export const aiProviderSessionQueries = {
           connected_at,
           disconnected_at,
           created_at,
-          updated_at
+          updated_at,
+          access_token_enc,
+          refresh_token_enc,
+          expires_at,
+          scopes,
+          token_type
       `,
       values: [userId]
     };
