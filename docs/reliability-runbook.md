@@ -39,6 +39,8 @@ This runbook covers first-response checks for the MVP reliability path.
   - `npm run test:smoke:internal-jobs-overlap`
 - Smoke-check AI provider manual-connection contract:
   - `npm run test:smoke:ai-connection-required`
+- Smoke-check flashcards generation/review reliability contract:
+  - `npm run test:smoke:flashcards-generation-review`
 - Run consolidated Phase 7 reliability smoke gate:
   - `npm run test:smoke:phase7-reliability`
 - Run AI schema quality gate (95% minimum, real provider):
@@ -93,6 +95,14 @@ Current tracked job name:
 - If missing, generation returns `409` with reconnect guidance to `/ai-connect`.
 - Generation responses now include `generationPath` (`browser_driver` or `fallback`) and resolved `provider` attribution so reliability validation can explicitly separate real browser-driver runs from fallback behavior and verify provider lineage deterministically.
 - Browser automation currently has a first implementation for `chatgpt-web`; unsupported providers fall back to deterministic payload generation while preserving provider lineage.
+
+## Flashcards Review Contract
+
+- Endpoint: `POST /api/flashcards/review`
+- Auth: signed-in app session.
+- `flashcardId` must be canonical (no leading/trailing whitespace) and must be a valid UUID.
+- Invalid `flashcardId` shape returns `400` instead of propagating DB errors as `500`.
+- `recallScore` must be numeric in range `0..5`.
 
 ## Triage Playbook
 

@@ -15,6 +15,8 @@ interface ReviewRequestBody {
 
 const isRecallScore = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 5;
+const isUuid = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export async function POST(request: Request) {
   const session = await readSession();
@@ -31,6 +33,15 @@ export async function POST(request: Request) {
   const body = rawBody as ReviewRequestBody;
   if (!body.flashcardId || typeof body.flashcardId !== "string") {
     return NextResponse.json({ error: "flashcardId is required" }, { status: 400 });
+  }
+  if (body.flashcardId.trim() !== body.flashcardId) {
+    return NextResponse.json(
+      { error: "flashcardId must not include leading or trailing whitespace." },
+      { status: 400 }
+    );
+  }
+  if (!isUuid(body.flashcardId)) {
+    return NextResponse.json({ error: "flashcardId must be a valid UUID." }, { status: 400 });
   }
   if (!isRecallScore(body.recallScore)) {
     return NextResponse.json({ error: "recallScore must be a number between 0 and 5" }, { status: 400 });

@@ -27,7 +27,8 @@
     "test:smoke:internal-health-state-matrix": "python3 scripts/tests/internal_health_state_matrix_smoke.py",
     "test:smoke:internal-jobs": "python3 scripts/tests/internal_jobs_smoke.py",
     "test:smoke:internal-jobs-failure-ledger": "python3 scripts/tests/internal_jobs_failure_ledger_smoke.py",
-    "test:smoke:internal-jobs-overlap": "python3 scripts/tests/internal_jobs_overlap_smoke.py"
+    "test:smoke:internal-jobs-overlap": "python3 scripts/tests/internal_jobs_overlap_smoke.py",
+    "test:smoke:flashcards-generation-review": "python3 scripts/tests/flashcards_generation_review_smoke.py"
   },
   "dependencies": {
     "next": "^15.1.0",

@@ -52,6 +52,7 @@ Use this checklist before cutting a pilot/MVP release. Aligns with Release Gates
 | Internal health state matrix smoke | `npm run test:smoke:internal-health-state-matrix` |
 | Internal jobs failure-ledger smoke | `npm run test:smoke:internal-jobs-failure-ledger` |
 | Quiz attempt lifecycle smoke | `npm run test:smoke:quiz-attempt-lifecycle` |
+| Flashcards generation/review smoke | `npm run test:smoke:flashcards-generation-review` |
 | Smoke test | `npm run test:smoke:pre-phase3` (optional: extended MVP smoke) |
 | Phase 6 hardening smoke | `npm run test:smoke:phase6-hardening` |
 | Phase 7 reliability smoke | `npm run test:smoke:phase7-reliability` |
