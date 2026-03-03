@@ -12,6 +12,7 @@ import { runChatGptWebPrompt } from "./browser/chatgpt-web";
 import { withRetries } from "./retry";
 
 const browserAutomationEnabled = () => process.env.AI_BROWSER_AUTOMATION === "1";
+export type AiGenerationPath = "browser_driver" | "fallback";
 
 const buildBrowserPrompt = (topic: string, difficulty: DifficultyLevel) =>
   [
@@ -65,13 +66,14 @@ export async function generateConceptPayload(
   topic: string,
   difficulty: DifficultyLevel,
   session: AiProviderSession
-): Promise<GenerationPayload> {
+): Promise<{ payload: GenerationPayload; generationPath: AiGenerationPath }> {
   if (browserAutomationEnabled()) {
     try {
-      return await withRetries(
+      const payload = await withRetries(
         () => generateViaBrowserDriver(topic, difficulty, session),
         { operationName: "concept_generation_browser_ui", maxAttempts: 2, delayMs: 500 }
       );
+      return { payload, generationPath: "browser_driver" };
     } catch (error) {
       recordError("concept_generation_browser_ui", error, {
         providerKey: session.providerKey,
@@ -85,8 +87,11 @@ export async function generateConceptPayload(
 
   const fallback = generateBootstrapConceptPayload(topic, difficulty);
   return {
-    ...fallback,
-    provider: session.providerKey,
-    model: session.modelHint ?? `${session.mode}-manual`
+    payload: {
+      ...fallback,
+      provider: session.providerKey,
+      model: session.modelHint ?? `${session.mode}-manual`
+    },
+    generationPath: "fallback"
   };
 }

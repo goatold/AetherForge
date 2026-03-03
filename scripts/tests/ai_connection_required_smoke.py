@@ -382,6 +382,63 @@ def run(base_url: str):
         )
     )
 
+    # Connect an unsupported browser driver provider and ensure generation explicitly reports fallback path.
+    request_json(opener, "DELETE", f"{base_url}/api/ai/session")
+    claude_connect_status, claude_connect_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/ai/session",
+        {
+            "providerKey": "claude-web",
+            "mode": "browser_ui",
+            "modelHint": "claude-web-sonnet",
+            "loginUrl": "https://claude.ai",
+        },
+    )
+    claude_connect_obj = parse_json(claude_connect_body)
+    claude_connected = claude_connect_obj.get("connected") if isinstance(claude_connect_obj, dict) else None
+    checks.append(
+        CheckResult(
+            "manual_provider_connect_claude",
+            claude_connect_status == 200 and claude_connected is True,
+            f"status={claude_connect_status}",
+        )
+    )
+
+    claude_concept_status, claude_concept_body = request_json(
+        opener,
+        "POST",
+        f"{base_url}/api/concepts/generate",
+        {"topic": "Fallback Path Topic", "difficulty": "intermediate"},
+    )
+    claude_concept_obj = parse_json(claude_concept_body)
+    claude_generation_path = (
+        claude_concept_obj.get("generationPath") if isinstance(claude_concept_obj, dict) else None
+    )
+    checks.append(
+        CheckResult(
+            "concept_generation_path_reports_fallback_for_unsupported_provider",
+            claude_concept_status == 200 and claude_generation_path == "fallback",
+            f"status={claude_concept_status}, generationPath={claude_generation_path}",
+        )
+    )
+
+    claude_quiz_status, claude_quiz_body = request_json(opener, "POST", f"{base_url}/api/quiz/generate", {})
+    claude_quiz_obj = parse_json(claude_quiz_body)
+    claude_quiz_id = claude_quiz_obj.get("quizId") if isinstance(claude_quiz_obj, dict) else None
+    claude_quiz_generation_path = (
+        claude_quiz_obj.get("generationPath") if isinstance(claude_quiz_obj, dict) else None
+    )
+    checks.append(
+        CheckResult(
+            "quiz_generation_path_reports_fallback_for_unsupported_provider",
+            claude_quiz_status == 200
+            and isinstance(claude_quiz_id, str)
+            and claude_quiz_generation_path == "fallback",
+            f"status={claude_quiz_status}, generationPath={claude_quiz_generation_path}",
+        )
+    )
+
     disconnect_status, disconnect_body = request_json(opener, "DELETE", f"{base_url}/api/ai/session")
     disconnect_obj = parse_json(disconnect_body)
     disconnected = disconnect_obj.get("disconnected") if isinstance(disconnect_obj, dict) else None

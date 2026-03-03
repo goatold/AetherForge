@@ -10,6 +10,7 @@ import {
 } from "./quiz";
 import { runChatGptWebPrompt } from "./browser/chatgpt-web";
 import { withRetries } from "./retry";
+import type { AiGenerationPath } from "./generate-concepts";
 
 const browserAutomationEnabled = () => process.env.AI_BROWSER_AUTOMATION === "1";
 
@@ -86,13 +87,14 @@ export async function generateQuizPayload(
   difficulty: DifficultyLevel,
   concepts: QuizGenerationConceptInput[],
   session: AiProviderSession
-): Promise<QuizGenerationPayload> {
+): Promise<{ payload: QuizGenerationPayload; generationPath: AiGenerationPath }> {
   if (browserAutomationEnabled()) {
     try {
-      return await withRetries(
+      const payload = await withRetries(
         () => generateViaBrowserDriver(topic, difficulty, concepts, session),
         { operationName: "quiz_generation_browser_ui", maxAttempts: 2, delayMs: 500 }
       );
+      return { payload, generationPath: "browser_driver" };
     } catch (error) {
       recordError("quiz_generation_browser_ui", error, {
         providerKey: session.providerKey,
@@ -106,8 +108,11 @@ export async function generateQuizPayload(
 
   const fallback = generateBootstrapQuizPayload(topic, difficulty, concepts);
   return {
-    ...fallback,
-    provider: session.providerKey,
-    model: session.modelHint ?? `${session.mode}-manual`
+    payload: {
+      ...fallback,
+      provider: session.providerKey,
+      model: session.modelHint ?? `${session.mode}-manual`
+    },
+    generationPath: "fallback"
   };
 }

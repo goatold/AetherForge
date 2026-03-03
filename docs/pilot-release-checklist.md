@@ -31,6 +31,7 @@ Use this checklist before cutting a pilot/MVP release. Aligns with Release Gates
   - Connection mode contract for MVP: `browser_ui` is supported; `oauth_api` must be rejected until the future OAuth/API milestone lands.
   - Threshold: **>=95%** success for both concept and quiz generation runs.
   - Gate command (real provider required): `npm run test:quality:ai-schema`
+  - Review `generationPath` output split (`browser_driver` vs `fallback`) for concept/quiz runs and ensure release confidence is based on intended path.
   - If gate fails, inspect provider logs/retries and address schema-validation or provider reliability causes before release.
 
 ### 5. Usability

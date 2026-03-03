@@ -61,12 +61,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const generatedPayload = await generateConceptPayload(
+  const generated = await generateConceptPayload(
     parsedRequest.topic,
     parsedRequest.difficulty,
     aiSession
   );
-  const payload = validateGenerationPayload(generatedPayload);
+  const payload = validateGenerationPayload(generated.payload);
   if (!payload) {
     recordError("concept_generation_validation", new Error("Generated payload failed validation"), {
       workspaceId: workspace.id
@@ -142,7 +142,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       artifactId,
-      concepts: insertedConcepts
+      concepts: insertedConcepts,
+      generationPath: generated.generationPath
     });
   } catch {
     await client.query("rollback");

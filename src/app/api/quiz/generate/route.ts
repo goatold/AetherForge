@@ -104,14 +104,14 @@ export async function POST(request: Request) {
       { status: 409 }
     );
   }
-  let payload: Awaited<ReturnType<typeof generateQuizPayload>>;
+  let generated: Awaited<ReturnType<typeof generateQuizPayload>>;
   try {
     logger.info("Quiz generation started", {
       workspaceId: workspace.id,
       difficulty,
       conceptCount: conceptsResult.rows.length
     });
-    payload = await generateQuizPayload(
+    generated = await generateQuizPayload(
       workspace.topic,
       difficulty,
       conceptsResult.rows,
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
   const quizTitle =
     body.conceptIds && body.conceptIds.length > 0
       ? `Targeted retry: ${workspace.topic}`
-      : payload.title;
+      : generated.payload.title;
 
   const db = getDbPool();
   const client = await db.connect();
@@ -142,17 +142,23 @@ export async function POST(request: Request) {
         workspace.id,
         quizTitle,
         latestArtifactId,
-        payload.provider,
-        payload.model
+        generated.payload.provider,
+        generated.payload.model
       ).text,
-      [workspace.id, quizTitle, latestArtifactId, payload.provider, payload.model]
+      [
+        workspace.id,
+        quizTitle,
+        latestArtifactId,
+        generated.payload.provider,
+        generated.payload.model
+      ]
     );
     const quiz = quizResult.rows[0];
     if (!quiz) {
       throw new Error("Failed to create quiz");
     }
 
-    for (const [index, question] of payload.questions.entries()) {
+    for (const [index, question] of generated.payload.questions.entries()) {
       const questionResult = await client.query<{ id: string }>(
         quizQuestionQueries.insert(
           quiz.id,
@@ -193,7 +199,7 @@ export async function POST(request: Request) {
     }
 
     await client.query("commit");
-    return NextResponse.json({ quizId: quiz.id });
+    return NextResponse.json({ quizId: quiz.id, generationPath: generated.generationPath });
   } catch (error) {
     await client.query("rollback");
     recordError("quiz_generation_persistence", error, { workspaceId: workspace.id });

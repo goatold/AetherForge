@@ -17,6 +17,8 @@ from dataclasses import dataclass
 class IterationResult:
     concept_ok: bool
     quiz_ok: bool
+    concept_generation_path: str
+    quiz_generation_path: str
     detail: str
 
 
@@ -82,8 +84,11 @@ def run(base_url: str, iterations: int, min_success_rate: float, require_connect
         concept_obj = json.loads(concept_body) if concept_body else {}
         artifact_id = concept_obj.get("artifactId") if isinstance(concept_obj, dict) else None
         concepts = concept_obj.get("concepts") if isinstance(concept_obj, dict) else None
+        concept_generation_path = (
+            concept_obj.get("generationPath") if isinstance(concept_obj, dict) else "unknown"
+        )
         concept_ok = concept_status == 200 and isinstance(artifact_id, str) and isinstance(concepts, list) and len(concepts) > 0
-        detail = f"concept_status={concept_status}"
+        detail = f"concept_status={concept_status}, concept_generation_path={concept_generation_path}"
 
         if concept_ok and require_connected_provider:
             artifacts_status, artifacts_body = get_json(opener, f"{base_url}/api/concepts/artifacts")
@@ -96,18 +101,29 @@ def run(base_url: str, iterations: int, min_success_rate: float, require_connect
             detail += f", provider={provider}"
 
         if not concept_ok:
-            results.append(IterationResult(concept_ok=False, quiz_ok=False, detail=detail))
+            results.append(
+                IterationResult(
+                    concept_ok=False,
+                    quiz_ok=False,
+                    concept_generation_path=str(concept_generation_path),
+                    quiz_generation_path="not_attempted",
+                    detail=detail,
+                )
+            )
             continue
 
         quiz_status, quiz_body = post_json(opener, f"{base_url}/api/quiz/generate", {})
         quiz_obj = json.loads(quiz_body) if quiz_body else {}
         quiz_id = quiz_obj.get("quizId") if isinstance(quiz_obj, dict) else None
+        quiz_generation_path = quiz_obj.get("generationPath") if isinstance(quiz_obj, dict) else "unknown"
         quiz_ok = quiz_status == 200 and isinstance(quiz_id, str) and len(quiz_id) > 10
         results.append(
             IterationResult(
                 concept_ok=True,
                 quiz_ok=quiz_ok,
-                detail=f"{detail}, quiz_status={quiz_status}",
+                concept_generation_path=str(concept_generation_path),
+                quiz_generation_path=str(quiz_generation_path),
+                detail=f"{detail}, quiz_status={quiz_status}, quiz_generation_path={quiz_generation_path}",
             )
         )
 
@@ -148,8 +164,17 @@ def main() -> int:
         state = "PASS" if result.concept_ok and result.quiz_ok else "FAIL"
         print(f"iteration_{idx}: {state} ({result.detail})")
 
+    concept_driver_runs = sum(1 for item in results if item.concept_generation_path == "browser_driver")
+    concept_fallback_runs = sum(1 for item in results if item.concept_generation_path == "fallback")
+    quiz_driver_runs = sum(1 for item in results if item.quiz_generation_path == "browser_driver")
+    quiz_fallback_runs = sum(1 for item in results if item.quiz_generation_path == "fallback")
+
     print(f"concept_success_rate: {concept_rate:.2f}%")
     print(f"quiz_success_rate: {quiz_rate:.2f}%")
+    print(f"concept_generation_path_browser_driver: {concept_driver_runs}/{len(results)}")
+    print(f"concept_generation_path_fallback: {concept_fallback_runs}/{len(results)}")
+    print(f"quiz_generation_path_browser_driver: {quiz_driver_runs}/{len(results)}")
+    print(f"quiz_generation_path_fallback: {quiz_fallback_runs}/{len(results)}")
     print(f"required_min_success_rate: {args.min_success_rate:.2f}%")
 
     if not passed:
