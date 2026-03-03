@@ -27,6 +27,8 @@ This runbook covers first-response checks for the MVP reliability path.
     - `NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000 INTERNAL_JOB_TOKEN=... npm run health:check`
 - Smoke-check internal health auth + response contract:
   - `npm run test:smoke:internal-health`
+- Smoke-check deterministic internal health state matrix (`ok`/`degraded`/`down`):
+  - `npm run test:smoke:internal-health-state-matrix`
 - Trigger flashcard queue refresh:
   - `npm run job:flashcards:refresh`
 - Smoke-check internal job auth + response contract:
@@ -46,6 +48,10 @@ This runbook covers first-response checks for the MVP reliability path.
 
 - Endpoint: `GET /api/internal/health`
 - Auth: `Authorization: Bearer <INTERNAL_JOB_TOKEN>`
+- Deterministic test mode (token-authenticated): optional `testMode` query for smoke coverage:
+  - `force_ok` -> returns `status: "ok"` with HTTP `200`
+  - `force_degraded` -> returns `status: "degraded"` with HTTP `503`
+  - `force_down` -> returns `status: "down"` with HTTP `503`
 - Status values:
   - `ok`: DB probe passes and no detected degradation.
   - `degraded`: DB probe passes but queue/job diagnostics indicate risk.

@@ -49,6 +49,7 @@ Use this checklist before cutting a pilot/MVP release. Aligns with Release Gates
 | Lint | `npm run lint` |
 | Build | `npm run build` |
 | Health check | `npm run health:check` |
+| Internal health state matrix smoke | `npm run test:smoke:internal-health-state-matrix` |
 | Smoke test | `npm run test:smoke:pre-phase3` (optional: extended MVP smoke) |
 | Phase 6 hardening smoke | `npm run test:smoke:phase6-hardening` |
 | Phase 7 reliability smoke | `npm run test:smoke:phase7-reliability` |

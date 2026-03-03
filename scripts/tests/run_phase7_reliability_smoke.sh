@@ -24,6 +24,9 @@ done
 echo "[phase7] internal health contract"
 python3 scripts/tests/internal_health_smoke.py "${COMMON_ARGS[@]}"
 
+echo "[phase7] internal health state matrix contract"
+python3 scripts/tests/internal_health_state_matrix_smoke.py "${COMMON_ARGS[@]}"
+
 echo "[phase7] internal jobs contract"
 python3 scripts/tests/internal_jobs_smoke.py "${COMMON_ARGS[@]}"
 

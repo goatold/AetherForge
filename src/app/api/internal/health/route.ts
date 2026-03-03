@@ -4,6 +4,8 @@ import { executeQuery, internalJobRunQueries } from "@/lib/db";
 
 const JOB_NAME = "flashcards_queue_refresh";
 const STALE_SUCCESS_HOURS = 24;
+type HealthStatus = "ok" | "degraded" | "down";
+type HealthTestMode = "force_ok" | "force_degraded" | "force_down";
 
 const authorized = (request: Request): boolean => {
   const token = process.env.INTERNAL_JOB_TOKEN;
@@ -19,6 +21,49 @@ const authorized = (request: Request): boolean => {
 };
 
 const toIsoOrNull = (value: string | null | undefined) => (value ? new Date(value).toISOString() : null);
+const parseTestMode = (request: Request): HealthTestMode | null => {
+  const mode = new URL(request.url).searchParams.get("testMode");
+  if (mode === "force_ok" || mode === "force_degraded" || mode === "force_down") {
+    return mode;
+  }
+  return null;
+};
+
+const simulatedResponse = (status: HealthStatus, checkedAt: string) =>
+  NextResponse.json(
+    {
+      status,
+      checkedAt,
+      simulated: true,
+      database:
+        status === "down"
+          ? {
+              ok: false,
+              error: "Simulated down status for deterministic smoke testing."
+            }
+          : {
+              ok: true,
+              nowUtc: checkedAt
+            },
+      flashcardsQueue:
+        status === "down"
+          ? null
+          : {
+              totalFlashcards: 0,
+              dueFlashcards: 0,
+              workspaceCount: 0,
+              latestRun: null,
+              latestSuccessAt: null,
+              staleThresholdHours: STALE_SUCCESS_HOURS,
+              hasRecentSuccess: status === "ok",
+              error:
+                status === "degraded"
+                  ? "Simulated degraded status for deterministic smoke testing."
+                  : null
+            }
+    },
+    { status: status === "ok" ? 200 : 503 }
+  );
 
 export async function GET(request: Request) {
   if (!authorized(request)) {
@@ -26,6 +71,16 @@ export async function GET(request: Request) {
   }
 
   const checkedAt = new Date().toISOString();
+  const testMode = parseTestMode(request);
+  if (testMode === "force_ok") {
+    return simulatedResponse("ok", checkedAt);
+  }
+  if (testMode === "force_degraded") {
+    return simulatedResponse("degraded", checkedAt);
+  }
+  if (testMode === "force_down") {
+    return simulatedResponse("down", checkedAt);
+  }
 
   try {
     const dbProbe = await executeQuery<{ now_utc: string }>({
@@ -103,7 +158,7 @@ export async function GET(request: Request) {
       ? new Date(latestSuccessAt).getTime() >= staleCutoffMs
       : false;
 
-    const status: "ok" | "degraded" =
+    const status: HealthStatus =
       !jobStatusError && latestRun?.status === "failed" && !hasRecentSuccess
         ? "degraded"
         : !jobStatusError && latestSuccessAt && !hasRecentSuccess

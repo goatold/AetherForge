@@ -23,6 +23,7 @@
     "test:smoke:ai-connection-required": "python3 scripts/tests/ai_connection_required_smoke.py",
     "test:quality:ai-schema": "python3 scripts/tests/ai_quality_gate.py --min-success-rate 95 --iterations 20 --require-connected-provider",
     "test:smoke:internal-health": "python3 scripts/tests/internal_health_smoke.py",
+    "test:smoke:internal-health-state-matrix": "python3 scripts/tests/internal_health_state_matrix_smoke.py",
     "test:smoke:internal-jobs": "python3 scripts/tests/internal_jobs_smoke.py",
     "test:smoke:internal-jobs-overlap": "python3 scripts/tests/internal_jobs_overlap_smoke.py"
   },
